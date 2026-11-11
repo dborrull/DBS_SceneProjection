@@ -1,0 +1,44 @@
+# Urban exterior: streets, squares, car parks, facades.
+# One label per line, text:role or text:object:shape. Roles: floor, wall, ceiling, object,
+# backdrop, ignore. Shapes (objects): box, card, cylinder, cone, sphere, revolve (else automatic).
+road:floor
+street:floor
+sidewalk:floor
+pavement:floor
+crosswalk:floor
+parking lot:floor
+plaza:floor
+building facade:wall
+wall:wall
+shop front:wall
+garage door:wall
+building:object
+car:object
+van:object
+truck:object
+bus:object
+kiosk:object
+bus stop:object
+bench:object
+planter:object
+dumpster:object
+container:object
+barrier:object
+stairs:object
+column:object
+tree:backdrop
+skyline:backdrop
+distant buildings:backdrop
+mountain:backdrop
+sky:ignore
+cloud:ignore
+person:ignore
+bicycle:ignore
+motorcycle:ignore
+traffic light:ignore
+street lamp:ignore
+pole:ignore
+traffic sign:ignore
+power lines:ignore
+fence:ignore
+flag:ignore

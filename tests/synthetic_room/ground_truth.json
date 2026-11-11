@@ -1,0 +1,146 @@
+{
+  "width": 1280,
+  "height": 720,
+  "focal_mm": 28.0,
+  "sensor_width_mm": 36.0,
+  "focal_pixels": 995.5555555555555,
+  "fov_x_deg": 65.4704525442152,
+  "camera_location": [
+    0.4000000059604645,
+    -4.0,
+    1.600000023841858
+  ],
+  "camera_rotation_euler_xyz_rad": [
+    1.4433884620666504,
+    9.060903138902177e-09,
+    0.08550532162189484
+  ],
+  "camera_matrix_world": [
+    [
+      0.996346652507782,
+      -0.010851358063519001,
+      0.08470895886421204,
+      0.4000000059604645
+    ],
+    [
+      0.08540116995573044,
+      0.1265992373228073,
+      -0.9882708787918091,
+      -4.0
+    ],
+    [
+      -9.060903138902177e-09,
+      0.9918946027755737,
+      0.12706345319747925,
+      1.600000023841858
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "blender_convention": "Z up, camera looks down -Z, +Y up in camera space",
+  "primitives": [
+    {
+      "name": "floor",
+      "type": "plane",
+      "size": [
+        10,
+        14
+      ],
+      "location": [
+        0,
+        1,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "back_wall",
+      "type": "plane",
+      "size": [
+        10,
+        4
+      ],
+      "location": [
+        0,
+        6,
+        2
+      ],
+      "rotation_deg": [
+        90,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "left_wall",
+      "type": "plane",
+      "size": [
+        14,
+        4
+      ],
+      "location": [
+        -4,
+        1,
+        2
+      ],
+      "rotation_deg": [
+        90,
+        0,
+        90
+      ]
+    },
+    {
+      "name": "crate_a",
+      "type": "box",
+      "size": [
+        1.2,
+        1.2,
+        1.2
+      ],
+      "location": [
+        -1.6,
+        3.2,
+        0.6
+      ],
+      "rotation_z_deg": 20
+    },
+    {
+      "name": "crate_b",
+      "type": "box",
+      "size": [
+        0.8,
+        2.0,
+        0.6
+      ],
+      "location": [
+        1.4,
+        2.0,
+        0.3
+      ],
+      "rotation_z_deg": -15
+    },
+    {
+      "name": "pillar",
+      "type": "box",
+      "size": [
+        0.5,
+        0.5,
+        3.0
+      ],
+      "location": [
+        2.6,
+        4.5,
+        1.5
+      ],
+      "rotation_z_deg": 0
+    }
+  ]
+}

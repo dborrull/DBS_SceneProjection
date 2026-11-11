@@ -1,0 +1,111 @@
+# All: interior + exterior + urban together (default). Extra prompts are cheap: SAM3
+# encodes the image once. One label per line, text:role or text:object:shape.
+floor:floor
+carpet:floor
+rug:floor
+wall:wall
+door:wall
+window:wall
+ceiling:ceiling
+table:object
+desk:object
+chair:object
+stool:object
+bench:object
+sofa:object
+armchair:object
+bed:object
+cabinet:object
+wardrobe:object
+kitchen counter:object
+kitchen island:object
+shelf:object
+bookcase:object
+refrigerator:object
+oven:object
+fireplace:object
+stairs:object
+column:object
+box:object
+tv:object
+lamp:object
+floor lamp:object
+vase:object
+plant pot:object
+chandelier:ignore
+plant:ignore
+flowers:ignore
+curtain:ignore
+person:ignore
+pet:ignore
+mirror:ignore
+ground:floor
+grass:floor
+dirt path:floor
+asphalt:floor
+dirt road:floor
+trail:floor
+gravel:floor
+sand:floor
+snow:floor
+field:floor
+house:object
+cabin:object
+barn:object
+shed:object
+car:object
+van:object
+truck:object
+tractor:object
+picnic table:object
+tree stump:object
+rock:object
+boulder:object
+log:object
+tent:object
+haystack:object
+tree:backdrop
+forest:backdrop
+bush:backdrop
+hedge:backdrop
+mountain:backdrop
+hill:backdrop
+cliff:backdrop
+water:ignore
+lake:ignore
+river:ignore
+sky:ignore
+cloud:ignore
+fire:ignore
+smoke:ignore
+fence:ignore
+animal:ignore
+tall grass:ignore
+road:floor
+street:floor
+sidewalk:floor
+pavement:floor
+crosswalk:floor
+parking lot:floor
+plaza:floor
+building facade:wall
+shop front:wall
+garage door:wall
+building:object
+bus:object
+kiosk:object
+bus stop:object
+planter:object
+dumpster:object
+container:object
+barrier:object
+skyline:backdrop
+distant buildings:backdrop
+bicycle:ignore
+motorcycle:ignore
+traffic light:ignore
+street lamp:ignore
+pole:ignore
+traffic sign:ignore
+power lines:ignore
+flag:ignore

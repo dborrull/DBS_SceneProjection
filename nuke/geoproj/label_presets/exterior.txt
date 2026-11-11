@@ -1,0 +1,51 @@
+# Exterior, nature: countryside, gardens, camps, forests, mountains.
+# One label per line, text:role or text:object:shape. Roles: floor, wall, ceiling, object,
+# backdrop, ignore. Shapes (objects): box, card, cylinder, cone, sphere, revolve (else automatic).
+ground:floor
+grass:floor
+road:floor
+asphalt:floor
+dirt road:floor
+dirt path:floor
+trail:floor
+gravel:floor
+sand:floor
+snow:floor
+field:floor
+house:object
+cabin:object
+barn:object
+shed:object
+car:object
+van:object
+truck:object
+tractor:object
+picnic table:object
+bench:object
+table:object
+chair:object
+tree stump:object
+rock:object
+boulder:object
+log:object
+tent:object
+haystack:object
+tree:backdrop
+forest:backdrop
+bush:backdrop
+hedge:backdrop
+mountain:backdrop
+hill:backdrop
+cliff:backdrop
+water:ignore
+lake:ignore
+river:ignore
+sky:ignore
+cloud:ignore
+fire:ignore
+smoke:ignore
+fence:ignore
+person:ignore
+animal:ignore
+flowers:ignore
+tall grass:ignore

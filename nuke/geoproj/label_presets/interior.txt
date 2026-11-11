@@ -1,0 +1,42 @@
+# Interior: rooms, kitchens, offices, shops.
+# One label per line, text:role or text:object:shape. Roles: floor, wall, ceiling, object,
+# backdrop, ignore. Shapes (objects): box, card, cylinder, cone, sphere, revolve (else automatic).
+floor:floor
+carpet:floor
+rug:floor
+wall:wall
+door:wall
+window:wall
+ceiling:ceiling
+table:object
+desk:object
+chair:object
+stool:object
+bench:object
+sofa:object
+armchair:object
+bed:object
+cabinet:object
+wardrobe:object
+kitchen counter:object
+kitchen island:object
+shelf:object
+bookcase:object
+refrigerator:object
+oven:object
+fireplace:object
+stairs:object
+column:object
+box:object
+tv:object
+lamp:object
+floor lamp:object
+vase:object
+plant pot:object
+chandelier:ignore
+plant:ignore
+flowers:ignore
+curtain:ignore
+person:ignore
+pet:ignore
+mirror:ignore

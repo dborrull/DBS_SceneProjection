@@ -1,0 +1,24 @@
+# Run outputs and working scenes (never in the repo)
+geo_projection/
+comfy_bridge/
+render camera/
+track/
+publish/
+*.nk
+*.nknc
+*.nk~
+*.nknc~
+*.autosave
+
+# Loose reference images in the project root
+/*.png
+/*.jpg
+/*.jpeg
+/*.exr
+
+# Machine-specific notes
+ENVIRONMENT.md
+
+# Python
+__pycache__/
+*.pyc
