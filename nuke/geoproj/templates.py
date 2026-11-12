@@ -392,6 +392,7 @@ set N_paint [stack 0]
 push $N_paint
  %(proj_cls)s {
   inputs 2
+  project_on front
   name %(p)s_Project
  }
 """ % v

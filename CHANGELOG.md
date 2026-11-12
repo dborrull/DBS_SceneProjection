@@ -5,6 +5,7 @@
 - Boxes give each face its own vertices, and round shapes their caps: with shared corners Nuke
   smoothed the normals across the edges, and `project on: front` left part of a face seen
   edge-on unprojected (e.g. the back of a truck).
+- "extract for paint" Project nodes also use `project on: front` (they were left on `both`).
 - Build checks for Blender and for comfyui-rmbg (SAM3) before sending anything to ComfyUI, so a
   missing one is reported at once instead of after MoGe has run.
 - README: the first build with segmentation downloads SAM3 (about 3.4 GB).
