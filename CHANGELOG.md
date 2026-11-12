@@ -12,7 +12,7 @@
 - Non-square pixel plates (DVCPRO HD, anamorphic) sent to ComfyUI with square pixels.
 - Projections land on front faces only (`project_on front`).
 - Classic 3D system: live **show only** / **pattern** isolate.
-- Toolbar button with its own icon (also on the node).
+- Toolbar button with its own icon.
 - **set to current frame** button next to the reference frame.
 - SAM3 is moved off the GPU after use so SHARP loads fully on 8 GB cards.
 - Clearer error when the plate input has no rgb (e.g. a render connected instead of the plate).

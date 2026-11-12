@@ -106,7 +106,6 @@ def node_template(server, ref_frame, presets, blender=""):
 push $cut_paste_input
 Group {
  name GeoProjection1
- icon geo_projection.png
  tile_color %(tile)d
  knobChanged %(tint)s
  label "\\[value gp_status]\\n\\[value geometry] \\[value system]"
