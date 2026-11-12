@@ -63,6 +63,8 @@ wrong on real interiors: it took a dining table for the floor).
 
 ## Use
 
+<img src="docs/images/panel.png" alt="The DBS_AutoProjection node panel in Nuke" width="560">
+
 1. Select the plate, create **AutoProjection**, set the **reference frame** (or **set to current
    frame**). Plates with non-square pixels (DVCPRO HD, anamorphic) are sent to ComfyUI
    stretched to square pixels; the camera maths use the display aspect.
