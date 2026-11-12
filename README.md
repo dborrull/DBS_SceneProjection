@@ -56,7 +56,8 @@ wrong on real interiors: it took a dining table for the floor).
   import geo_projection
   geo_projection.install_menu()
   ```
-  Then **Nodes › 3D › GeoProjection**.
+  Then the **GeoProjection** button in the Nodes toolbar (also in **Nodes › 3D**). The icon,
+  `nuke/geo_projection.png` (+ `@2x`), is drawn by `tools/make_icon.py`.
 
 ## Use
 

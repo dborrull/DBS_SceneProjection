@@ -690,6 +690,12 @@ def extract(group):
     _log("extracted %s: %s" % (p, " ".join(n for _, n in chosen)))
 
 
+ICON = "geo_projection.png"   # next to geo_projection.py (in the plugin path), + @2x
+
+
 def install_menu():
-    m = nuke.menu("Nodes").addMenu("3D")
-    m.addCommand("GeoProjection", "import geo_projection; geo_projection.create_node()")
+    """GeoProjection on its own button in the Nodes toolbar, and in Nodes > 3D."""
+    cmd = "import geo_projection; geo_projection.create_node()"
+    tb = nuke.menu("Nodes").addMenu("GeoProjection", icon=ICON)
+    tb.addCommand("GeoProjection", cmd, icon=ICON)
+    nuke.menu("Nodes").addMenu("3D").addCommand("GeoProjection", cmd, icon=ICON)
