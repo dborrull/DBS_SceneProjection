@@ -9,7 +9,7 @@ classic one. Optionally a Gaussian splat of the plate (Apple SHARP) in the same 
 
 With a tracked camera and its point cloud connected, the geometry is snapped to the tracker's
 own 3D points, so projected paint stays on the plate: on a real handheld truck shot, the
-projection slides under 1.2 px (median) across 188 frames.
+projection slides under 1.2 px (median, on a 1280-wide plate) across 188 frames.
 
 ```
 Nuke (AutoProjection)  frame -> PNG through the Viewer transform
@@ -87,8 +87,13 @@ wrong on real interiors: it took a dining table for the floor).
      on it: depth changes only along the camera rays, so the reference frame still lines up,
      and a tilted plane is straightened. Regions without enough points keep MoGe's shape. After
      the build the info line and the Script Editor give the slide in px per object over the
-     plate's range (each tracker point against its point on the geometry); objects over 2 px are
-     flagged. Backdrop cards (trees) always slide some: use relief or the splat there.
+     plate's range (each tracker point against its point on the geometry), in plate px and,
+     for plates that are not 1920 wide, in px of a 1920-wide frame (@HD); objects over 2 px @HD
+     are flagged. Backdrop cards (trees) always slide some: use relief or the splat there.
+   - **track check**: when the camera comes from a Nuke CameraTracker (Create Camera), the info
+     line shows its solve error and warns over 1 px @HD (over 2 px: the projection will slide).
+     For cameras tracked elsewhere, it warns when over 30% of the tracker points disagree with
+     the rest (about 7% on a good track).
    - **extra frames** (sequence mode, needs the shot camera): more frames projected onto the
      same geometry, typed (`25 50`) or added with **add current frame** at the Viewer's frame.
      The reference frame stays on top; each extra frame, in the order listed, fills what the

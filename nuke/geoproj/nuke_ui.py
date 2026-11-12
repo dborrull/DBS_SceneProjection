@@ -243,6 +243,7 @@ def _shot_camera(node, frame, extra=()):
         raise ComfyError("The 'cam' input must be a camera (got %s)." % (cam.Class() if cam else "nothing"))
     shot = _camera_at(cam, frame)
     shot["link"] = link
+    shot["tracker"] = _tracker_of_camera(cam)
     shot["extra"] = []
     for f in extra:
         c = _camera_at(cam, f)
@@ -252,11 +253,68 @@ def _shot_camera(node, frame, extra=()):
     return shot
 
 
+def _tracker_of_camera(cam):
+    """Full name of the CameraTracker a camera is linked to by expression ('Create Camera' links
+    translate to <tracker>.camTranslate), or None. Reads knob text only: no Node object."""
+    try:
+        m = re.search(r"([A-Za-z_][\w.]*)\.camTranslate", cam["translate"].toScript())
+    except Exception:
+        return None
+    if not m:
+        return None
+    parent = cam.fullName().rpartition(".")[0]
+    return (parent + "." if parent else "") + m.group(1)
+
+
+HD_WIDTH = 1920.0           # errors and slides are judged in px of a 1920-wide frame
+TRACK_ERR_WARN_HD = 1.0     # CameraTracker solve error (RMSE) above this: the projection may slide
+TRACK_ERR_BAD_HD = 2.0      # ...above this: it will
+TRACK_REJECT_WARN = 0.3     # share of tracker points the snap rejects above this: noisy track
+TRACK_REJECT_MIN_PTS = 30   # (only judged with at least this many points on snapped regions)
+
+
+def _number_list(text):
+    out = []
+    for t in str(text).replace("{", " ").replace("}", " ").split():
+        try:
+            out.append(float(t))
+        except ValueError:
+            pass                   # 'curve', 'x123' frame markers, interpolation flags
+    return out
+
+
+def _tracker_error(shot):
+    """{name, rmse, worst} in plate px from the CameraTracker behind the shot camera, or None
+    (a camera from another tracker, or baked)."""
+    name = shot.get("tracker") if shot else None
+    if not name:
+        return None
+    try:
+        rmse = float(nuke.knob(name + ".solveRMSE"))
+    except Exception:
+        return None
+    try:
+        per_frame = _number_list(nuke.knob(name + ".solveError"))
+    except Exception:
+        per_frame = []
+    return {"name": name, "rmse": rmse, "worst": max(per_frame) if per_frame else None}
+
+
+def _snap_rejected(snap):
+    """Share of the tracker points on snapped regions that the snap left out as outliers
+    (about 7 % on a good track), or None with too few points."""
+    regs = [e for e in (snap or {}).get("regions", []) if "after" in e]
+    total = sum(e["points"] for e in regs)
+    if total < TRACK_REJECT_MIN_PTS:
+        return None
+    return 1.0 - sum(e["used"] for e in regs) / float(total)
+
+
 TRACK_POINTS_MIN = 8      # tracker points seen at the reference frame needed to fix the scale
 TRACK_POINTS_BAD_SPREAD = 0.25   # flagged when the points' depth ratios spread more than this
 
 
-def _points_of(src):
+def _points_of(src, shot=None):
     """World positions of the points of the node on the 'points' input (one Node object):
     classic geometry (CameraTrackerPointCloud, ReadGeo2 of an exported cloud or locators, any
     node with a geometry selection) or a USD stage (GeoImport ...)."""
@@ -269,6 +327,10 @@ def _points_of(src):
     if src.Class() == "CameraTracker":
         raise ComfyError("Connect the CameraTracker's point cloud to 'points', not the CameraTracker "
                          "itself: in the CameraTracker, Export: Point Cloud, then Create.")
+    if shot is not None and not shot.get("tracker") and src.Class() == "CameraTrackerPointCloud":
+        t = src.input(0)
+        if t is not None and t.Class() == "CameraTracker":
+            shot["tracker"] = t.fullName()
     pts = []
     if "geo_select" in src.knobs():
         for obj in src["geo_select"].getGeometry():
@@ -298,7 +360,7 @@ def _points_of(src):
 
 
 SLIDE_FRAMES = 9         # frames across the plate where the slide is measured
-SLIDE_BAD_PX = 2.0       # an object whose median slide is above this many px is flagged
+SLIDE_BAD_PX = 2.0       # an object whose median slide is above this many px @HD is flagged
 
 
 def _slide_report(node, shot, tp, aspect):
@@ -345,7 +407,7 @@ def _track_points(node, shot, aspect):
         return None
     if not shot:
         raise ComfyError("'points' needs the tracked camera on the 'cam' input too.")
-    pts = _points_of(src)
+    pts = _points_of(src, shot)
     seen, world = [], []
     for p in pts:
         uvd = project_points([p], shot["r"], shot["t"], shot["focal"], shot["haperture"],
@@ -545,6 +607,24 @@ def _run(node):
         info += " (labelled areas %.0f%%)" % (100 * v["labelled_coverage"])
     if extra:
         info += " | frames %s" % " > ".join(str(f) for f in [frame] + extra)
+    hd = HD_WIDTH / float(node.width())        # plate px -> px of a 1920-wide frame
+
+    def px(v, d=1):
+        f = "%%.%df" % d
+        return f % v + " px" + ((" (" + f % (v * hd) + " @HD)") if abs(hd - 1.0) > 0.05 else "")
+
+    terr = _tracker_error(shot)
+    if terr:
+        rmse_hd = terr["rmse"] * hd
+        _log("track solve error (%s): %.2f px RMSE, worst frame %s px; %.2f px @HD" % (
+            terr["name"], terr["rmse"], "%.2f" % terr["worst"] if terr["worst"] is not None else "?", rmse_hd))
+        info += " | solve error %s" % px(terr["rmse"], 2)
+        if rmse_hd > TRACK_ERR_BAD_HD:
+            info += " VERY HIGH: the projection will slide - refine the track"
+        elif rmse_hd > TRACK_ERR_WARN_HD:
+            info += " HIGH: the projection may slide - check the track"
+        elif terr["worst"] is not None and terr["worst"] * hd > TRACK_ERR_BAD_HD:
+            info += " (worst frame %s: check the track there)" % px(terr["worst"])
     scene_scale = 1.0
     solved = res["geo"].get("scale") or {}
     tp = fit.get("track_points") or {}
@@ -560,16 +640,23 @@ def _run(node):
             fixed = [e for e in snap["regions"] if "after" in e]
             info += " | snapped to tracker: %d regions (%.0f%% of the frame)" % (
                 len(fixed), 100 * snap["corrected_share"])
+            rej = _snap_rejected(snap)
+            if rej is not None:
+                _log("tracker points left out by the snap: %.0f%%" % (100 * rej))
+                if rej > TRACK_REJECT_WARN:
+                    info += (" | %.0f%% of the tracker points disagree with the rest: the track may be "
+                             "noisy - check it" % (100 * rej))
         slide, frames = _slide_report(node, shot, tp, aspect)
         if slide:
             rows = sorted(slide.items(), key=lambda kv: -kv[1][0])
-            _log("slide vs tracker points over frames %s (median / p90 px, worst frame per point):" % frames)
+            _log("slide vs tracker points over frames %s (median / p90 plate px, median @HD; "
+                 "worst frame per point):" % frames)
             for reg, (k, med, p90) in rows:
-                _log("  %-24s %4d pts  %6.2f / %6.2f px%s" % (reg, k, med, p90,
-                                                             "  SLIDES" if med > SLIDE_BAD_PX else ""))
+                _log("  %-24s %4d pts  %6.2f / %6.2f px  %6.2f @HD%s" % (
+                    reg, k, med, p90, med * hd, "  SLIDES" if med * hd > SLIDE_BAD_PX else ""))
             main = [(reg, v) for reg, v in rows if reg != "unlabelled"][:3]
-            info += " | slide " + ", ".join("%s %.1f px" % (reg, v[1]) for reg, v in main)
-            bad = [reg for reg, v in rows if reg != "unlabelled" and v[1] > SLIDE_BAD_PX and v[0] >= 5]
+            info += " | slide " + ", ".join("%s %s" % (reg, px(v[1])) for reg, v in main)
+            bad = [reg for reg, v in rows if reg != "unlabelled" and v[1] * hd > SLIDE_BAD_PX and v[0] >= 5]
             if bad:
                 info += " (sliding: %s)" % ", ".join(bad[:4])
     elif solved.get("scale"):

@@ -5,6 +5,11 @@
 - Build checks for Blender and for comfyui-rmbg (SAM3) before sending anything to ComfyUI, so a
   missing one is reported at once instead of after MoGe has run.
 - README: the first build with segmentation downloads SAM3 (about 3.4 GB).
+- Track check: the CameraTracker's solve error in the info line (found through the camera's
+  expressions or the point cloud), with a warning over 1 px @HD; for other trackers, a warning
+  when over 30% of the tracker points disagree with the rest.
+- Slide and track errors are judged in px of a 1920-wide frame (@HD), so the thresholds hold at
+  any resolution; plates that are not 1920 wide show both values.
 
 ## 0.8.0
 
