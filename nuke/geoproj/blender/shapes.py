@@ -41,12 +41,16 @@ def lathe(center_xy, profile, segments=SEGMENTS, cap=True):
             b0, b1 = a0 + segments, a1 + segments
             faces += [[a0, a1, b1], [a0, b1, b0]]
     if cap:
+        # The caps get their own rim vertices: shared with the side, Nuke smooths the normals
+        # across the rim (and 'project on: front' misjudges the faces there).
         nb = len(v)
-        v = np.vstack([v, [center_xy[0], center_xy[1], prof[0][0]], [center_xy[0], center_xy[1], prof[-1][0]]])
         top0 = (len(prof) - 1) * segments
+        v = np.vstack([v, [center_xy[0], center_xy[1], prof[0][0]], [center_xy[0], center_xy[1], prof[-1][0]],
+                       v[:segments], v[top0:top0 + segments]])
+        b0, t0 = nb + 2, nb + 2 + segments
         for j in range(segments):
-            faces.append([nb, (j + 1) % segments, j])                     # bottom, facing down
-            faces.append([nb + 1, top0 + j, top0 + (j + 1) % segments])   # top, facing up
+            faces.append([nb, b0 + (j + 1) % segments, b0 + j])               # bottom, facing down
+            faces.append([nb + 1, t0 + j, t0 + (j + 1) % segments])           # top, facing up
     return v, np.array(faces, np.int64)
 
 

@@ -56,8 +56,12 @@ def add_plane(p):
 def add_box(p):
     sx, sy, sz = (s / 2 for s in p["size"])
     corners = [(x, y, z) for z in (-sz, sz) for y in (-sy, sy) for x in (-sx, sx)]
-    faces = [[0, 2, 3, 1], [4, 5, 7, 6], [0, 1, 5, 4], [2, 6, 7, 3], [0, 4, 6, 2], [1, 3, 7, 5]]
-    obj = add_mesh(p["name"], corners, faces)
+    quads = [[0, 2, 3, 1], [4, 5, 7, 6], [0, 1, 5, 4], [2, 6, 7, 3], [0, 4, 6, 2], [1, 3, 7, 5]]
+    # Each face gets its own 4 vertices: with the 8 corners shared, Nuke smooths the normals
+    # across the edges, and 'project on: front' then drops part of a face seen edge-on.
+    verts = [corners[i] for q in quads for i in q]
+    faces = [[4 * k, 4 * k + 1, 4 * k + 2, 4 * k + 3] for k in range(6)]
+    obj = add_mesh(p["name"], verts, faces)
     obj.rotation_euler = (0, 0, np.radians(p["rotation_z_deg"]))
     obj.location = p["center"]
     obj["geo_kind"] = "box"
