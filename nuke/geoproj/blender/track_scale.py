@@ -1,4 +1,4 @@
-# GeoProjection (nuke_geo_projection) - by David Borrull
+# AutoProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Scale between MoGe and a camera track from the tracker's own 3D points (numpy only).
 

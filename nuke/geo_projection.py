@@ -1,6 +1,6 @@
-# GeoProjection (nuke_geo_projection) - by David Borrull
+# AutoProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
-"""GeoProjection entry point for Nuke: plate -> camera + basic geometry (planes / boxes).
+"""AutoProjection entry point for Nuke: plate -> camera + basic geometry (planes / boxes).
 
 Install: copy geo_projection.py and the geoproj folder to ~/.nuke (or add this folder to the
 plugin path), then in ~/.nuke/menu.py:

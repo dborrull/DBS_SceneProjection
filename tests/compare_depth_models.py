@@ -1,4 +1,4 @@
-# GeoProjection (nuke_geo_projection) - by David Borrull
+# AutoProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Compare MoGe 2 with Depth Anything 3 (mono large, metric large, base) on one plate.
 

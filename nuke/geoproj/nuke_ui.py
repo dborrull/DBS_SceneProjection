@@ -1,6 +1,6 @@
-# GeoProjection (nuke_geo_projection) - by David Borrull
+# AutoProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
-"""Nuke side of GeoProjection. Every entry point gets the GeoProjection node from its button
+"""Nuke side of AutoProjection. Every entry point gets the AutoProjection node from its button
 (nuke.thisNode()) and reaches internal nodes by path, so a run costs at most four Node
 objects (this node, the shot camera, the active Viewer, the graph to paste into); pasted
 setups connect themselves by name - Nuke Non-commercial allows 10 per session. Helpers marked "ComfyBridge" are
@@ -25,7 +25,7 @@ SETUP_DX, SETUP_DY = 150, 60
 
 
 def _log(msg):
-    print("[GeoProjection] %s" % msg)
+    print("[AutoProjection] %s" % msg)
 
 
 # ---- ComfyBridge helpers ------------------------------------------------------------------
@@ -211,7 +211,7 @@ def run(node):
         _run(node)
     except ComfyError as e:
         node["gp_status"].setValue("error")
-        nuke.message("GeoProjection:\n" + str(e))
+        nuke.message("AutoProjection:\n" + str(e))
 
 
 def _camera_at(cam, frame):
@@ -407,7 +407,7 @@ def add_frame(node):
     frames = [str(f) for f in _extra_frames(node)]
     f = str(int(nuke.frame()))
     if f == str(int(node["ref_frame"].value())):
-        nuke.message("GeoProjection: frame %s is the reference frame (always projected, on top)." % f)
+        nuke.message("AutoProjection: frame %s is the reference frame (always projected, on top)." % f)
         return
     if f not in frames:
         frames.append(f)
@@ -456,14 +456,14 @@ def _run(node):
         # pixels, as MoGe / SHARP expect; the camera maths below use the display aspect.
         node["gp_par"].setValue(par)
     elif abs(par - 1.0) > 1e-6:
-        raise ComfyError("The plate has non-square pixels (pixel aspect %.3g) and this GeoProjection "
+        raise ComfyError("The plate has non-square pixels (pixel aspect %.3g) and this AutoProjection "
                          "node is older than v0.8: create a new one." % par)
     aspect = node.width() * par / float(node.height())
     if abs(par - 1.0) > 1e-6:
         _log("pixel aspect %.3g: frames sent with square pixels (%dx%d display)"
              % (par, round(node.width() * par), node.height()))
 
-    task = nuke.ProgressTask("GeoProjection")
+    task = nuke.ProgressTask("AutoProjection")
     try:
         task.setMessage("Writing frame %d" % frame)
         try:
@@ -652,7 +652,7 @@ def extract(group):
     fed by the same plate and camera (connected by name in the pasted text). Each extract
     goes one backdrop further right. Costs two Node objects (the Group, the graph it is in)."""
     if "gp_setup" not in group.knobs():
-        nuke.message("GeoProjection: this setup was built before v0.6.\nBuild it again to extract objects.")
+        nuke.message("AutoProjection: this setup was built before v0.6.\nBuild it again to extract objects.")
         return
     setup = json.loads(group["gp_setup"].getText())      # value() would evaluate the [ ] as TCL
     prims = [tuple(p) for p in setup["prims"]]
@@ -661,7 +661,7 @@ def extract(group):
     pattern = group["show_pattern"].value().strip()
     chosen = select_prims(prims, group["show_only"].value(), pattern)
     if not chosen:
-        nuke.message("GeoProjection: pick an object or group in 'show only' (or type a 'pattern') first.")
+        nuke.message("AutoProjection: pick an object or group in 'show only' (or type a 'pattern') first.")
         return
     if not pattern:
         pattern = "/" + group["show_only"].value()
@@ -694,9 +694,9 @@ ICON = "geo_projection.png"   # next to geo_projection.py (in the plugin path), 
 
 
 def install_menu():
-    """DBS_GeoProjection under the DBS button in the Nodes toolbar (David Borrull Silva's tools),
+    """DBS_AutoProjection under the DBS button in the Nodes toolbar (David Borrull Silva's tools),
     and in Nodes > 3D."""
     cmd = "import geo_projection; geo_projection.create_node()"
     tb = nuke.menu("Nodes").addMenu("DBS", icon=ICON)
-    tb.addCommand("DBS_GeoProjection", cmd, icon=ICON)
-    nuke.menu("Nodes").addMenu("3D").addCommand("DBS_GeoProjection", cmd, icon=ICON)
+    tb.addCommand("DBS_AutoProjection", cmd, icon=ICON)
+    nuke.menu("Nodes").addMenu("3D").addCommand("DBS_AutoProjection", cmd, icon=ICON)

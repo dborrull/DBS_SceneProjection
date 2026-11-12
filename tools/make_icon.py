@@ -1,4 +1,4 @@
-# GeoProjection (nuke_geo_projection) - by David Borrull
+# AutoProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Draws the toolbar icon: nuke/geo_projection.png (24 px) and nuke/geo_projection@2x.png (48 px).
 

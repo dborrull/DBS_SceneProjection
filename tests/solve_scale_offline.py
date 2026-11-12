@@ -2,7 +2,7 @@
 
     C:/ComfyUI/python_embeded/python.exe tests/solve_scale_offline.py <run dir> <seq dir> <frame> [...]
 
-<run dir>: a GeoProjection run on frame 1 of the sequence (geo.npz, plate.0001.png, fit.json);
+<run dir>: a AutoProjection run on frame 1 of the sequence (geo.npz, plate.0001.png, fit.json);
 <seq dir>: make_synthetic_plate.py SEQ_FRAMES output (plate.%04d.png, ground_truth.json with
 camera_frames). Prints the solved scale, its error and the true one (MoGe camera height vs
 the ground truth's), so the scale solve can be checked without Nuke.

@@ -1,4 +1,4 @@
-"""End-to-end check of the GeoProjection gizmo in Nuke terminal mode (works in Non-commercial).
+"""End-to-end check of the AutoProjection gizmo in Nuke terminal mode (works in Non-commercial).
 
 Nuke17.1.exe --nc -t tests/nuke_e2e.py <plate> <out_dir> [--height 1.6] [--geometry shapes] [--step 4]
         [--preset all] [--shot ground_truth.json [--win u v]] [--system USD|classic]

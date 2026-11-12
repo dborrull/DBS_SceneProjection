@@ -1,4 +1,4 @@
-# GeoProjection (nuke_geo_projection) - by David Borrull
+# AutoProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Step 2 of the pipeline: plate image -> MoGe geometry (float EXR + JSON + NPZ). No Nuke dependency.
 

@@ -12,8 +12,9 @@
 - Non-square pixel plates (DVCPRO HD, anamorphic) sent to ComfyUI with square pixels.
 - Projections land on front faces only (`project_on front`).
 - Classic 3D system: live **show only** / **pattern** isolate.
-- The node is `DBS_GeoProjection` (prefix of David Borrull Silva's tools), under a **DBS**
-  toolbar button with its own icon.
+- Renamed **AutoProjection** (was GeoProjection). The node is `DBS_AutoProjection` (prefix of
+  David Borrull Silva's tools), under a **DBS** toolbar button with its own icon. Python modules
+  (`geo_projection`, `geoproj`) keep their names, so existing installs and scripts still work.
 - **set to current frame** button next to the reference frame.
 - SAM3 is moved off the GPU after use so SHARP loads fully on 8 GB cards.
 - Clearer error when the plate input has no rgb (e.g. a render connected instead of the plate).
