@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Build checks for Blender and for comfyui-rmbg (SAM3) before sending anything to ComfyUI, so a
+  missing one is reported at once instead of after MoGe has run.
+- README: the first build with segmentation downloads SAM3 (about 3.4 GB).
+
 ## 0.8.0
 
 - **Tracker points input** (`points`): the tracker's point cloud fixes the track scale directly

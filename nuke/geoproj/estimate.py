@@ -64,6 +64,9 @@ def estimate_geometry(image_path, out_dir, server="127.0.0.1:8188", fov_x_degree
     if missing:
         raise ComfyError("%s is missing nodes: %s\nInstall comfy_nodes/nuke_geo_projection and update ComfyUI."
                          % (client.label, ", ".join(missing)))
+    if labels and client.missing_nodes(["SAM3Segment"]):
+        raise ComfyError("%s has no SAM3Segment: install comfyui-rmbg (it runs SAM3 for the object "
+                         "masks) and restart ComfyUI. Or turn 'semantic segmentation' off." % client.label)
     if splat:
         add_splat(wf)
         missing = client.missing_nodes(["LoadSharpModel", "SharpPredict", "SharpSplat"])

@@ -43,6 +43,7 @@ wrong on real interiors: it took a dining table for the floor).
 - **ComfyUI**: MoGe weights in `models/geometry_estimation`
   (`moge_2_vitl_normal_fp16.safetensors`) and `comfy_nodes/nuke_geo_projection` in
   `custom_nodes` (copy or link the folder). For segmentation, [ComfyUI-RMBG](https://github.com/1038lab/ComfyUI-RMBG) (its SAM3, `models/sam3/sam3.pt`).
+  The first build with segmentation downloads `sam3.pt` (about 3.4 GB), so it takes longer once.
   Restart ComfyUI. First run after a restart loads SAM3 (~15 s); then a plate takes ~15 s in all.
 - **Gaussian splat** (optional): [ComfyUI-Sharp](https://github.com/PozzettiAndrea/ComfyUI-Sharp)
   in `custom_nodes` (its SHARP weights download to `models/sharp` on first use). Needs Nuke 17.1+

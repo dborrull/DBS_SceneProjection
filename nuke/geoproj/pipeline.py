@@ -130,13 +130,14 @@ def build(image_path, out_dir, server="127.0.0.1:8188", focal_mm=0.0, haperture_
     track_points: [(u, v, depth)] tracker points at the reference frame -> fit["track_points"]
     (scale between MoGe and the track).
     Returns run_blender's dict + "geo"."""
+    blender_exe = find_blender(blender)        # before ComfyUI: no Blender -> say so at once
     on_step(("MoGe + SAM3" if labels else "MoGe") + (" + SHARP" if splat else "") + " (ComfyUI)")
     geo = estimate_geometry(image_path, out_dir, server, fov_from_focal(focal_mm, haperture_mm),
                             labels=labels, is_cancelled=is_cancelled, log=log,
                             scale_frames=scale_frames, cameras=cameras, splat=splat)
     on_step("Blender fit")
     roles_json = os.path.join(out_dir, "labels.json") if geo.get("seg") else None
-    res = run_blender(find_blender(blender), geo["npz"], geo["json"], out_dir, camera_height,
+    res = run_blender(blender_exe, geo["npz"], geo["json"], out_dir, camera_height,
                       geo.get("seg"), roles_json, geometry, principal, is_cancelled=is_cancelled, log=log,
                       splat=geo.get("splat"), track_points=track_points)
     res["geo"] = geo
