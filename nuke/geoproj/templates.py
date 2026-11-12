@@ -105,7 +105,7 @@ def node_template(server, ref_frame, presets, blender=""):
     return """set cut_paste_input [stack 0]
 push $cut_paste_input
 Group {
- name GeoProjection1
+ name DBS_GeoProjection1
  tile_color %(tile)d
  knobChanged %(tint)s
  label "\\[value gp_status]\\n\\[value geometry] \\[value system]"
@@ -564,7 +564,7 @@ def setup_template(group, ref_frame, abc, cam, prims, align, use_shot_cam=False,
     USD setups get an Isolate node (GeoVisibility) driven by the Group's 'show only' / 'pattern'.
     align: {"rotate": xyz deg, "ra_ft": Ra @ fit camera position, "shot_t": camera position} for
     the transform x' = s Ra x + (shot_t - s Ra ft).
-    plate / shot_cam: full names ('root.GeoProjection1') the Group connects to by
+    plate / shot_cam: full names ('root.DBS_GeoProjection1') the Group connects to by
     'push [node ...]'; paste with nothing selected. The arguments are kept on the Group
     (gp_setup) for 'extract for paint'.
     extra: sequence mode, [(frame, shot camera knob values at that frame)] projected under the

@@ -694,8 +694,9 @@ ICON = "geo_projection.png"   # next to geo_projection.py (in the plugin path), 
 
 
 def install_menu():
-    """GeoProjection on its own button in the Nodes toolbar, and in Nodes > 3D."""
+    """DBS_GeoProjection under the DBS button in the Nodes toolbar (David Borrull Silva's tools),
+    and in Nodes > 3D."""
     cmd = "import geo_projection; geo_projection.create_node()"
-    tb = nuke.menu("Nodes").addMenu("GeoProjection", icon=ICON)
-    tb.addCommand("GeoProjection", cmd, icon=ICON)
-    nuke.menu("Nodes").addMenu("3D").addCommand("GeoProjection", cmd, icon=ICON)
+    tb = nuke.menu("Nodes").addMenu("DBS", icon=ICON)
+    tb.addCommand("DBS_GeoProjection", cmd, icon=ICON)
+    nuke.menu("Nodes").addMenu("3D").addCommand("DBS_GeoProjection", cmd, icon=ICON)

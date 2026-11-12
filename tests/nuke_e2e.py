@@ -52,7 +52,7 @@ nuke.root()["last_frame"].setValue(a.last)
 nuke.addFormat("%d %d 1 e2e_plate" % (read.width(), read.height()))
 nuke.root()["format"].setValue("e2e_plate")
 geo_projection.create_node()
-gp = nuke.toNode("GeoProjection1")
+gp = nuke.selectedNode()
 gp.setInput(0, read)
 print("E2E knobs:", [k for k in ("label_preset", "extra_labels", "show_labels", "geometry", "precision", "system")
                      if k in gp.knobs()], "| presets:", gp["label_preset"].values(), "|",
