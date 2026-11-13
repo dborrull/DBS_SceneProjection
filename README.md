@@ -90,10 +90,10 @@ wrong on real interiors: it took a dining table for the floor).
      and a tilted plane is straightened. Regions without enough points keep MoGe's shape. After
      the build the info line and the Script Editor give the slide in px per object over the
      plate's range (each tracker point against its point on the geometry), in plate px and,
-     for plates that are not 1920 wide, in px of a 1920-wide frame (@HD); objects over 2 px @HD
+     for plates that are not 1920 wide, in px of a 1920-wide frame (`@HD`); objects over 2 px `@HD`
      are flagged. Backdrop cards (trees) always slide some: use relief or the splat there.
    - **track check**: when the camera comes from a Nuke CameraTracker (Create Camera), the info
-     line shows its solve error and warns over 1 px @HD (over 2 px: the projection will slide).
+     line shows its solve error and warns over 1 px `@HD` (over 2 px: the projection will slide).
      For cameras tracked elsewhere, it warns when over 30% of the tracker points disagree with
      the rest (about 7% on a good track).
    - **extra frames** (sequence mode, needs the shot camera): more frames projected onto the
