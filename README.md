@@ -200,6 +200,13 @@ wrong on real interiors: it took a dining table for the floor).
      name). The scene scale is baked into the Xform at the time of the extract. Each extract
      goes one backdrop further right. Groups built before v0.6 cannot extract: build them
      again.
+   - **card from CornerPin**: pin an image (sign, poster, patch) onto the plate with a
+     CornerPin2D at the reference frame, in the plate's format (Reformat before it), left
+     unconnected to the gizmo. Select it and press the button on the Group: a card is put on
+     its four corners, on the plane MoGe sees under them (snapped to the track), and the
+     pinned image is projected onto it, in a backdrop beside the Group like an extract. The
+     card follows the shot camera and does not depend on the setup's geometry. It renders
+     over everything: anything passing in front (a person) needs its own matte.
    - Inside, fixed names: Hold (FrameHold), Camera (projection), Project, Geo, Bind and
      Isolate (USD only), Xform (scene scale + shot camera space), Scene, Render.
    - The geometry is organised by group: `/structure/floor`, `/structure/wall_1`,

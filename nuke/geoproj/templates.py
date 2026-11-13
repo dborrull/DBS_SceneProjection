@@ -595,6 +595,7 @@ def setup_template(group, ref_frame, abc, cam, prims, align, use_shot_cam=False,
     isolate_knobs = """ addUserKnob {4 show_only l "show only" t %s M {%s}}
  addUserKnob {1 show_pattern l "pattern" t %s}
  addUserKnob {22 extract l "extract for paint" t %s T %s}
+ addUserKnob {22 cornerpin_card l "card from CornerPin" t %s T %s}
 """ % (nk_quote(what), " ".join(nk_quote(x) for x in show),
        nk_quote("Free mask instead of the menu (when filled, it wins): names or paths, space "
                 "separated, * and ? wildcards; a name without a leading / is searched at any "
@@ -602,7 +603,12 @@ def setup_template(group, ref_frame, abc, cam, prims, align, use_shot_cam=False,
        nk_quote("Paste, in a backdrop beside this Group, loose nodes to paint on what 'show only' / "
                 "'pattern' picks: FrameHold -> RotoPaint (paint here) -> Project <- FrameHold of the "
                 "camera; that geometry only -> ScanlineRender through the camera."),
-       _py("extract"))
+       _py("extract"),
+       nk_quote("Select a CornerPin2D (an image pinned onto the plate, in the plate's format) and press: "
+                "a card is put on its four corners, on the surface MoGe sees there (snapped to the "
+                "track), and the pinned image is projected onto it from the reference frame, in a "
+                "backdrop beside this Group. The card does not depend on this setup's geometry."),
+       _py("cornerpin_card"))
     v = dict(group=group, ref=int(ref_frame), t=vec(cam["translate"]), r=vec(cam["rotate"]),
              order=cam["rot_order"], focal=cam["focal"], hap=cam["haperture"], vap=cam["vaperture"],
              win=vec(cam["win_translate"]), abc=nk_quote(abc), label=nk_quote(label), info=nk_quote(info),

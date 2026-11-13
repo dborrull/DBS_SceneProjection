@@ -18,7 +18,7 @@ PLACEHOLDER = ("one label per line:  text:role   or   text:object:shape\n"
                "e.g.   lamp:object:revolve\n"
                "       rug:floor\n"
                "       painting:ignore\n"
-               "roles: floor wall ceiling object backdrop ignore - shapes: box card cylinder cone sphere revolve")
+               "roles: floor wall ceiling object backdrop ignore - shapes: box card cylinder cone sphere revolve relief")
 
 
 class LabelsEditor(object):

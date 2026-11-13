@@ -13,8 +13,8 @@ SAM3 labels), and Blender 4.2+.
 """
 
 from geoproj import __version__
-from geoproj.nuke_ui import (add_frame, create_node, extract, install_menu, isolate_classic, run, show_labels,
+from geoproj.nuke_ui import (add_frame, cornerpin_card, create_node, extract, install_menu, isolate_classic, run, show_labels,
                              test_connection)
 
-__all__ = ["__version__", "add_frame", "create_node", "extract", "install_menu", "isolate_classic", "run",
+__all__ = ["__version__", "add_frame", "cornerpin_card", "create_node", "extract", "install_menu", "isolate_classic", "run",
            "show_labels", "test_connection"]

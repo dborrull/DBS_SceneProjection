@@ -10,6 +10,7 @@ import json
 import math
 import os
 import re
+import subprocess
 import tempfile
 
 import nuke
@@ -17,7 +18,7 @@ import nuke
 from .colour import IN_VIEWER, LUT, _CS_SRGB, ocio_names, parse_viewer_process, pick_colorspace
 from .comfy_client import ComfyClient, ComfyError, next_version_dir
 from .labels import DEFAULT_PRESET, ROLES, LabelError, effective_labels, list_presets
-from .pipeline import build, find_blender
+from .pipeline import build, clean_env, find_blender
 from .templates import extract_template, node_template, select_prims, setup_template
 from .xform import alignment, project_points, rigid_from_world_matrix, to_euler_xyz
 
@@ -827,6 +828,90 @@ def extract(group):
     if "gp_extracts" in group.knobs():
         group["gp_extracts"].setValue(n + 1)
     _log("extracted %s: %s" % (p, " ".join(n for _, n in chosen)))
+
+
+def _selected_cornerpin(graph):
+    """Full name of the first selected CornerPin in `graph` ('root' or 'root.Group1'), by TCL:
+    no Node object."""
+    for ptr in nuke.tcl("in %s {selected_nodes}" % graph).split():
+        if nuke.tcl("class %s" % ptr).startswith("CornerPin"):
+            name = nuke.tcl("full_name %s" % ptr)
+            return name if name.startswith("root.") else "root." + name
+    return None
+
+
+def cornerpin_card(group):
+    """'card from CornerPin' on a setup Group: a card on the selected CornerPin's four corners
+    (at the reference frame), on the plane MoGe sees under them in this build (blender/
+    cornerpin_card.py, a few seconds), and the CornerPin's output projected onto it, pasted in a
+    backdrop beside the Group like 'extract for paint'. Costs two Node objects."""
+    if "gp_setup" not in group.knobs():
+        nuke.message("DBS_ComfyProjection: this setup was built before v0.6.\nBuild it again first.")
+        return
+    setup = json.loads(group["gp_setup"].getText())
+    prefix = _graph_prefix(group)
+    graph = "root" + ("." + prefix[:-1] if prefix else "")
+    cp = _selected_cornerpin(graph)
+    if not cp:
+        nuke.message("DBS_ComfyProjection: select the CornerPin2D first (the image pinned onto the "
+                     "plate at the reference frame), then press 'card from CornerPin'.")
+        return
+    full = "root." + group.fullName()
+    plate = nuke.tcl("full_name [input %s 0]" % full)
+    ref = int(setup["ref"])
+    w, h = nuke.expression("%s.width" % cp), nuke.expression("%s.height" % cp)
+    if plate not in ("", "0"):
+        pw, ph = nuke.expression("root.%s.width" % plate), nuke.expression("root.%s.height" % plate)
+        if (int(w), int(h)) != (int(pw), int(ph)):
+            nuke.message("DBS_ComfyProjection: the CornerPin's output is %dx%d, the plate %dx%d. Put a "
+                         "Reformat to the plate's format before the CornerPin (or merge it over the "
+                         "plate), so the image lines up with the plate." % (w, h, pw, ph))
+            return
+    # to1..to4 (bottom left, bottom right, top right, top left) at the reference frame, in
+    # normalized image coordinates from the top left.
+    corners = [[nuke.expression("%s.to%d.x(%d)" % (cp, i, ref)) / w,
+                1.0 - nuke.expression("%s.to%d.y(%d)" % (cp, i, ref)) / h] for i in range(1, 5)]
+    run_dir = os.path.dirname(setup["abc"])
+    tag = re.sub(r"\W+", "_", cp.rsplit(".", 1)[-1])
+    p, i = "card_" + tag, 1
+    while nuke.exists("%s%s_Render" % (prefix, p)) or os.path.exists(os.path.join(run_dir, p + ".abc")):
+        i += 1
+        p = "card_%s_%d" % (tag, i)
+    out = os.path.join(run_dir, p + ".abc").replace("\\", "/")
+    cj = os.path.join(run_dir, p + "_corners.json")
+    with open(cj, "w") as f:
+        json.dump(corners, f)
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blender", "cornerpin_card.py")
+    try:
+        # As in the build (pipeline.run_blender): without Nuke's USD environment, and not from
+        # Nuke's install folder (Windows would load Foundry's USD DLLs from there).
+        r = subprocess.run([find_blender(""), "-b", "--factory-startup", "--python", script, "--",
+                            run_dir, cj, out, p], capture_output=True, text=True, timeout=180,
+                           env=clean_env()[0], cwd=run_dir,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except Exception as e:
+        nuke.message("DBS_ComfyProjection: Blender failed: %s" % e)
+        return
+    lines = r.stdout.splitlines()
+    err = [l[len("CARD ERROR "):] for l in lines if l.startswith("CARD ERROR ")]
+    rep = [json.loads(l[len("CARD "):]) for l in lines if l.startswith("CARD {")]
+    if err or not rep or not os.path.isfile(out):
+        nuke.message("DBS_ComfyProjection: no card.\n%s" % (err[0] if err else (r.stdout + r.stderr)[-800:]))
+        return
+    rep = rep[0]
+    s2 = dict(setup, abc=out, prims=[["cornerpin", p]])
+    title = "cornerpin card %s frame %03d" % (tag, ref)
+    text, offsets = extract_template(p, s2, [("cornerpin", p)], title, scale=group["scene_scale"].value(),
+                                     plate=cp, cam=("root." + nuke.tcl("full_name [input %s 1]" % full))
+                                     if setup["use_shot_cam"] else None)
+    n = int(group["gp_extracts"].value()) if "gp_extracts" in group.knobs() else 0
+    x, y = int(group["xpos"].value()) + EXTRACT_DX + n * EXTRACT_STEP, int(group["ypos"].value()) - 100
+    _paste(text, beside=group, positions={k: (x + dx, y + dy) for k, (dx, dy) in offsets.items()},
+           clear_selection=True)
+    if "gp_extracts" in group.knobs():
+        group["gp_extracts"].setValue(n + 1)
+    _log("cornerpin card %s from %s: plane fitted to %d MoGe points (residual %.2f%% of the depth)"
+         % (p, cp, rep["points"], 100 * rep["residual_rel"]))
 
 
 ICON = "geo_projection.png"   # next to geo_projection.py (in the plugin path), + @2x
