@@ -25,8 +25,8 @@ BG = (22, 24, 26)
 TEAL_GLOW = (47, 104, 90)
 FONTS = "C:/Windows/Fonts"
 TITLE = "DBS_ComfyProjection"
-SUB = "One frame -> projection setup in Nuke"
-FEATURES = "MoGe 2  \u00b7  SAM 3  \u00b7  Blender  \u00b7  snapped to your camera track"
+SUB = "AI projection setup from one frame, in Nuke"
+FEATURES = "MoGe 2 depth  \u00b7  SAM 3 masks  \u00b7  snapped to your camera track"
 TITLE_MAX_W = 700                           # px: the title ends before the picture
 TITLE_PREFIX = (120, 205, 180)              # the DBS_ prefix, in the icon's teal
 FADE_X0, FADE_X1 = 1090, 1200               # the right picture fades in over these columns
@@ -164,7 +164,7 @@ def main():
     d.text((402, 248), prefix, font=f, fill=TITLE_PREFIX, anchor="ls")
     d.text((402 + f.getlength(prefix), 248), name, font=f, fill=(255, 255, 255), anchor="ls")
     d.text((406, 272), SUB.replace("->", "\u2192"), font=font("segoeuil.ttf", 37), fill=(214, 226, 222))
-    d.text((406, 326), FEATURES, font=font("segoeuil.ttf", 26), fill=(150, 168, 162))
+    d.text((406, 326), FEATURES, font=font("segoeuil.ttf", 24), fill=(150, 168, 162))
 
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     im.convert("RGB").save(a.out, quality=92, optimize=True)
