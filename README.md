@@ -144,10 +144,11 @@ wrong on real interiors: it took a dining table for the floor).
    - **relief**: MoGe's own surface as meshes, one per object instance / floor / wall /
      backdrop / other, with the floor / wall planes pushed just behind as fill. ~200k vertices,
      ~25 MB Alembic at HD.
-   Backdrop instances (trees, hills) get a card each at their own distance. In relief the
-   cards sit just behind each tree's mesh as fill, so its holes show the tree's own distance,
-   not the far backdrop (about 1% of the relief ends up behind a card: farther things seen
-   through a tree).
+   Backdrop instances (trees, hills) get a card each at their own distance, cut to the
+   instance's shape (its mask, slightly grown, and straight down to the floor): a rectangle
+   would stand in front of whatever is farther inside it, e.g. the trees behind a `forest`
+   card. In relief the cards sit just behind each tree's mesh as fill, so its holes show the
+   tree's own distance, not the far backdrop.
    **precision (px)**: sample spacing of the fit (and the relief's vertex spacing); 4 by
    default, 2–3 for more detail. Nodes made before 0.5 keep their old detail level (low =
    boxes at 6 px, medium = boxes at 4 px, high = relief at 3 px).

@@ -386,7 +386,7 @@ def ray_depths(prims, rays_w, origin_w):
     t_best = np.full(len(rays_w), np.inf)
     id_best = np.full(len(rays_w), -1)
     for k, p in enumerate(prims):
-        if "vertices" in p:
+        if "vertices" in p and p["type"] != "plane":
             continue                        # relief meshes and round shapes: handled in _finish
         if p["type"] == "plane":
             n, c = np.array(p["normal"]), np.array(p["center"])
@@ -396,6 +396,8 @@ def ray_depths(prims, rays_w, origin_w):
                 t = ((c - origin_w) @ n) / den
             hit = origin_w + t[:, None] * rays_w - c
             ok = (t > 0) & (np.abs(hit @ u) <= p["size_u"] / 2) & (np.abs(hit @ v) <= p["size_v"] / 2)
+            if "cut" in p and len(p["cut"]) == len(rays_w):
+                ok &= p["cut"]                  # a cutout card: only where its mesh is
         else:
             a = math.radians(p["rotation_z_deg"])
             R = np.array([[math.cos(a), -math.sin(a), 0], [math.sin(a), math.cos(a), 0], [0, 0, 1]])
@@ -621,6 +623,51 @@ def card_quad(name, p, cam_xy):
     return q
 
 
+CUT_DILATE = 2           # backdrop card cutouts: the instance mask grown by this many samples
+
+
+def _dilate(m, n):
+    out = m.copy()
+    for _ in range(n):
+        g = out.copy()
+        g[1:] |= out[:-1]; g[:-1] |= out[1:]; g[:, 1:] |= out[:, :-1]; g[:, :-1] |= out[:, 1:]
+        out = g
+    return out
+
+
+def card_cutout(card, mask, rays_w, cam_w, z=None, valid=None):
+    """A backdrop card cut to its instance's shape: the card's plane, but only where the
+    (slightly grown) mask is, plus straight down to the floor under it (what nearer things hide
+    of the trunk). A rectangle would stand in front of everything farther inside it: the trees
+    behind a 'forest' card. rays_w: (H, W, 3) world rays of the sample grid. Adds "vertices",
+    "faces" (a grid mesh on the plane, facing the camera) and "cut" (the samples it covers, for
+    the verification); the card keeps its plane (center, normal, size) for the rest.
+    z / valid (MoGe depth of the grid): the growth and the fill never cover samples farther than
+    the card (another tree behind it)."""
+    n, c = np.array(card["normal"]), np.array(card["center"])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = ((c - cam_w) @ n) / (rays_w @ n)
+    P = cam_w + t[..., None] * rays_w
+    region = _dilate(mask, CUT_DILATE)
+    region = np.maximum.accumulate(region, axis=0)       # and everything below it in the image
+    ok = region & np.isfinite(t) & (t > 0) & (P[..., 2] >= 0)
+    if z is not None:
+        ok &= mask | ~(valid & (z > t * (1 + SIL_DEPTH_TOL)))
+    cell = ok[:-1, :-1] & ok[1:, :-1] & ok[:-1, 1:] & ok[1:, 1:]
+    i, j = np.nonzero(cell)
+    if len(i) * 2 < MIN_MESH_FACES:
+        return card                                       # too small to cut: keep the rectangle
+    W = mask.shape[1]
+    a, b, cc, d = i * W + j, (i + 1) * W + j, i * W + j + 1, (i + 1) * W + j + 1
+    tris = np.concatenate([np.stack([a, b, cc], 1), np.stack([cc, b, d], 1)])
+    used, inv = np.unique(tris, return_inverse=True)
+    cut = np.zeros(mask.size, bool)
+    cut[used] = True
+    card = dict(card)
+    card.update(vertices=P.reshape(-1, 3)[used], faces=inv.reshape(-1, 3), cut=cut)
+    return card
+
+
 STACK_GAP = 0.35         # a floating object rests on a labelled object below if the gap is
                          # under this fraction of its own height (else it hangs: wall cabinets)
 SUPPORT_COVER = 0.6      # ...or reaches the floor when unlabelled points fill this much of the
@@ -789,8 +836,10 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
         solid = valid & np.isin(role, (ROLE_CODES["object"], ROLE_CODES["wall"]))
         behind = 1.05 * np.percentile(pw[solid][:, 1] - cam_w[1], 95) if solid.any() else 0.0
         if geom["cards"]:
-            # A card per backdrop instance; the full backdrop moves to the far end and only
-            # fills what the cards miss (sky edges, gaps between trees).
+            # A card per backdrop instance, cut to the instance's shape; the full backdrop moves
+            # to the far end and only fills what the cards miss (sky edges, gaps between trees).
+            rays_g = scale * sample_rays(info, valid.shape, step).reshape(-1, 3) @ R.T
+            rays_g = rays_g.reshape(valid.shape + (3,))
             n_cards = 0
             for i in sorted(set(inst[backdrop].tolist())):
                 m = backdrop & (inst == i)
@@ -805,8 +854,13 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
                 if card is not None:
                     card["label"] = inst_label[i]
                     card["bd_inst"] = int(i)        # relief: pushed behind this instance's mesh
-                    prims.append(card)
+                    prims.append(card_cutout(card, m, rays_g, cam_w, pts[..., 2], valid))
             bd = backdrop_quad(pw[backdrop], cam_w, R, info, behind, pct=95)
+            rel = np.isin(inst, [i for i, g in relief_inst if g == "backdrop"]) & backdrop
+            if bd is not None and rel.any():
+                # Trees made relief by their label can stand farther than the 95th percentile:
+                # the far backdrop goes behind them, as it does in relief mode.
+                bd = push_back(bd, pw, rel, FILL_GAP * np.median(pts[valid][:, 2]) * scale)
         else:
             bd = backdrop_quad(pw[backdrop], cam_w, R, info, behind)
         if bd is not None:
@@ -927,6 +981,8 @@ def push_back(plane, pw, mask, gap):
     behind = max(0.0, -np.percentile(off, 0.5)) if off.size else 0.0
     plane = dict(plane)
     plane["center"] = (c - n * (behind + gap)).tolist()
+    if "vertices" in plane:              # a cutout card: its mesh moves with it
+        plane["vertices"] = plane["vertices"] - n * (behind + gap)
     return plane
 
 
@@ -1170,7 +1226,7 @@ def json_safe(result):
     """fit() result without the relief meshes' arrays (vertex / face counts instead)."""
     out = dict(result)
     out["primitives"] = [
-        dict({k: v for k, v in p.items() if k not in ("vertices", "faces")},
+        dict({k: v for k, v in p.items() if k not in ("vertices", "faces", "cut")},
              **({"n_vertices": int(len(p["vertices"])), "n_faces": int(len(p["faces"]))} if "vertices" in p else {}))
         for p in result["primitives"]]
     return out

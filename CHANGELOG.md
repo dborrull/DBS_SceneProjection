@@ -21,7 +21,11 @@
 - Relief keeps a card per backdrop instance, pushed just behind that instance's mesh, as fill
   for its holes (was: only the far backdrop plane).
 - Relief per label: `rock:object:relief`, `tree:backdrop:relief` make that label a relief mesh
-  in any geometry mode.
+  in any geometry mode. The far backdrop plane is pushed behind those meshes.
+- Backdrop cards are cut to their instance's shape (mask grown 2 samples, plus down to the
+  floor, never over anything farther). Rectangles stood in front of farther things: on the
+  truck shot a `forest` card at depth 42 hid trees at 61-66, which slid 19-26 px. Tree tracker
+  points on the geometry: median ratio 0.62-0.68 -> 0.997.
 
 ## 0.8.1
 

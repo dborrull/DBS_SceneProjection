@@ -181,7 +181,11 @@ def main():
     # lamp_1 etc., so Nuke can mask a whole group or one object by path.
     groups = {}
     for p in result["primitives"]:
-        obj = (add_plane if p["type"] == "plane" else add_box if p["type"] == "box" else add_relief)(p)
+        if "vertices" in p:
+            obj = add_relief(p)              # relief, round shapes, cutout cards
+            obj["geo_kind"] = p.get("kind", "mesh")
+        else:
+            obj = (add_plane if p["type"] == "plane" else add_box)(p)
         g = p.get("group", "objects")
         if g not in groups:
             groups[g] = bpy.data.objects.new(g, None)
