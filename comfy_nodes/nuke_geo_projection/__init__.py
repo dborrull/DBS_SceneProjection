@@ -212,6 +212,50 @@ class SegmentLabels:
         return {"ui": {"geo": [{"filename": fname, "subfolder": subfolder, "type": "output"}]}}
 
 
+TRI_MIN_ANGLE_DEG = 1.0   # triangulated points: rays at least this far apart (else depth is noise)
+TRI_MAX_PX = 2.0          # ...reprojecting within this many px in both frames
+TRI_MOGE_RATIO = 1.5      # ...and within this factor of MoGe's depth at the solved scale (wrong
+                          # matches that the epipolar RANSAC let through land far off)
+
+
+def _rays(uv, m, fpx, Wi, Hi):
+    """Pixels -> world rays (origin, unit direction) of a Nuke camera (looks down -Z, +Y up,
+    principal point at the image centre). m: 4x4 world matrix."""
+    d = np.stack([(uv[:, 0] - Wi / 2) / fpx, -(uv[:, 1] - Hi / 2) / fpx, -np.ones(len(uv))], 1)
+    r = m[:3, :3] / np.linalg.norm(m[:3, :3], axis=0)
+    d = d @ r.T
+    return m[:3, 3], d / np.linalg.norm(d, axis=1, keepdims=True)
+
+
+def _project(w, m, fpx, Wi, Hi):
+    r = m[:3, :3] / np.linalg.norm(m[:3, :3], axis=0)
+    c = (w - m[:3, 3]) @ r
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.stack([Wi / 2 + fpx * c[:, 0] / -c[:, 2], Hi / 2 - fpx * c[:, 1] / -c[:, 2]], 1), -c[:, 2]
+
+
+def triangulate(a, b, m_ref, fpx_ref, m_f, fpx_f, Wi, Hi):
+    """Matches a (reference px) <-> b (other frame px) of two known cameras -> world points
+    (midpoint of the two rays), with the ones too close to parallel, behind a camera or
+    reprojecting badly left out. -> (points (N, 3), kept mask over the matches)."""
+    o1, d1 = _rays(a, m_ref, fpx_ref, Wi, Hi)
+    o2, d2 = _rays(b, m_f, fpx_f, Wi, Hi)
+    w0 = o1 - o2
+    bb = (d1 * d2).sum(1)
+    dd, ee = d1 @ w0, d2 @ w0
+    den = 1 - bb ** 2
+    with np.errstate(divide="ignore", invalid="ignore"):
+        s = (bb * ee - dd) / den
+        t = (ee - bb * dd) / den
+    w = (o1 + s[:, None] * d1 + o2 + t[:, None] * d2) / 2
+    p1, z1 = _project(w, m_ref, fpx_ref, Wi, Hi)
+    p2, z2 = _project(w, m_f, fpx_f, Wi, Hi)
+    e = np.maximum(np.hypot(*(p1 - a).T), np.hypot(*(p2 - b).T))
+    angle = np.degrees(np.arccos(np.clip(bb, -1, 1)))
+    keep = (den > 1e-12) & (z1 > 0) & (z2 > 0) & (e <= TRI_MAX_PX) & (angle >= TRI_MIN_ANGLE_DEG)
+    return w, keep
+
+
 class SolveTrackScale:
     """Scale between MoGe's units and a tracked camera's: SIFT matches between the reference
     image and other frames of the plate, each match lifted to 3D with MoGe's point at the
@@ -222,7 +266,9 @@ class SolveTrackScale:
     cameras (JSON): {"ref": frame, "frames": {frame: {"matrix": 16 floats, row-major world
     matrix, translation in the last column (Nuke: camera looks down -Z, +Y up), "focal",
     "haperture"}}}. frames: uploaded image names, "frame:name" comma separated, the same size
-    as the reference image. Writes <prefix>_scale.json: scale, median_px, matches, per_frame."""
+    as the reference image. Writes <prefix>_scale.json: scale, median_px, matches, per_frame,
+    and "points": the matches triangulated with the two known cameras (world, track units), for
+    the snap and the slide check when no point cloud is connected."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -256,7 +302,7 @@ class SolveTrackScale:
         gray = lambda rgb: clahe.apply(cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY))
         kr, dr = sift.detectAndCompute(gray(ref), None)
         mref = np.array(cams["frames"][str(cams["ref"])]["matrix"], float).reshape(4, 4)
-        lifted, seen, per_frame = [], [], {}
+        lifted, seen, per_frame, pairs = [], [], {}, []
         for item in [s for s in frames.split(",") if s.strip()]:
             f, name = item.strip().split(":", 1)
             img = np.array(Image.open(folder_paths.get_annotated_filepath(name)).convert("RGB").resize((Wi, Hi)))
@@ -280,6 +326,7 @@ class SolveTrackScale:
             mf = np.array(cam["matrix"], float).reshape(4, 4)
             fpx = cam["focal"] / cam["haperture"] * Wi
             lifted.append((p[ok] * [1, -1, -1], b[ok], mf, fpx))
+            pairs.append((a[ok], b[ok], mf, fpx, p[ok][:, 2]))
             seen.append(f)
 
         def errors(s, items):
@@ -311,6 +358,20 @@ class SolveTrackScale:
                 if len(item[0]) >= 8:
                     s, e = best([item])
                     result["per_frame"][f] = {"scale": s, "median_px": e, "matches": len(item[0])}
+            cr = cams["frames"][str(cams["ref"])]
+            fpx_ref = cr["focal"] / cr["haperture"] * Wi
+            pts3, n_tri = [], 0
+            for a, b, mf, fpx, zm in pairs:
+                w, keep = triangulate(a, b, mref, fpx_ref, mf, fpx, Wi, Hi)
+                _, zr = _project(w, mref, fpx_ref, Wi, Hi)
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    ratio = zr / (result["scale"] * zm)
+                keep &= np.isfinite(ratio) & (np.abs(np.log(np.where(ratio > 0, ratio, 1e-9)))
+                                              <= np.log(TRI_MOGE_RATIO))
+                pts3 += w[keep].tolist()
+                n_tri += len(a)
+            result["points"] = pts3
+            result["triangulated"] = {"matches": n_tri, "kept": len(pts3)}
         out_dir, name, counter, subfolder, _ = folder_paths.get_save_image_path(
             filename_prefix, folder_paths.get_output_directory(), Wi, Hi)
         fname = "%s_%05d_.json" % (name, counter)

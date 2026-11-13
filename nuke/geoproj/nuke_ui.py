@@ -323,6 +323,7 @@ def _snap_rejected(snap):
 
 
 TRACK_POINTS_MIN = 8      # tracker points seen at the reference frame needed to fix the scale
+TRIANGULATED_MIN = 30     # triangulated match points needed to use them as tracker points
 TRACK_POINTS_BAD_SPREAD = 0.25   # flagged when the points' depth ratios spread more than this
 
 
@@ -434,6 +435,27 @@ def _track_points(node, shot, aspect):
                          "frame (need %d). Check the point cloud belongs to this camera, or "
                          "disconnect 'points'." % (len(seen), len(pts), TRACK_POINTS_MIN))
     return seen
+
+
+def _from_matches(shot, aspect):
+    """No point cloud: SolveTrackScale's matches, triangulated with the tracked camera at the two
+    frames, stand in for the tracker's points (snap + slide check). -> callable for build()."""
+    def convert(world_pts):
+        seen, world = [], []
+        for p in world_pts:
+            uvd = project_points([p], shot["r"], shot["t"], shot["focal"], shot["haperture"],
+                                 shot["win_translate"], aspect)
+            if uvd:
+                seen.append(uvd[0])
+                world.append(tuple(p))
+        _log("triangulated match points: %d, %d seen at the reference frame" % (len(world_pts), len(seen)))
+        if len(seen) < TRIANGULATED_MIN:
+            _log("  too few to snap to (need %d): scale from SolveTrackScale only" % TRIANGULATED_MIN)
+            return None
+        shot["track_world"] = world
+        shot["track_source"] = "triangulated"
+        return seen
+    return convert
 
 
 SCALE_BAD_PX = 0.005    # track scale flagged when its median reprojection error is over this x width
@@ -585,7 +607,8 @@ def _run(node):
                     float(node["camera_height"].value()), node["blender"].evaluate(), labels,
                     _geometry(node), principal, is_cancelled=task.isCancelled, log=_log,
                     on_step=on_step, scale_frames=scale_frames, cameras=cams, splat=want_splat,
-                    track_points=track_points)
+                    track_points=track_points,
+                    from_matches=_from_matches(shot, aspect) if shot and not track_points else None)
     finally:
         del task
 
@@ -646,8 +669,9 @@ def _run(node):
     if tp.get("scale"):
         # Track units per MoGe unit from the tracker's points; the fit may have rescaled MoGe.
         scene_scale = tp["scale"] / (fit.get("units_scale") or 1.0)
-        info += " | track scale %.3g from %d tracker points (spread %.0f%%)" % (
-            scene_scale, tp["used"], 100 * tp["spread"])
+        info += " | track scale %.3g from %d %s points (spread %.0f%%)" % (
+            scene_scale, tp["used"], "triangulated" if shot.get("track_source") == "triangulated" else "tracker",
+            100 * tp["spread"])
         if tp["spread"] > TRACK_POINTS_BAD_SPREAD:
             info += " UNRELIABLE: the points disagree with MoGe's depth - check 'scene scale'"
         snap = tp.get("snap") or {}

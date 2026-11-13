@@ -13,6 +13,15 @@
   On the truck shot all objects pass; in the interior test, box tables and vases miss 45-50%
   (10% as shapes) and chairs are loose.
 - The panel's info line is split into lines (it was cut off).
+- No point cloud: SolveTrackScale also triangulates its matches with the tracked camera at the
+  two frames (rays over 1° apart, under 2 px, within 1.5x of MoGe's depth) and those points
+  stand in for the tracker's: snap and slide check without NukeX. Checked numerically (0.6%
+  depth error at 1 px noise) and through the node on a synthetic wall (scale 2.0008 for 2.0).
+  ComfyUI needs a restart to load it.
+- Relief keeps a card per backdrop instance, pushed just behind that instance's mesh, as fill
+  for its holes (was: only the far backdrop plane).
+- Relief per label: `rock:object:relief`, `tree:backdrop:relief` make that label a relief mesh
+  in any geometry mode.
 
 ## 0.8.1
 

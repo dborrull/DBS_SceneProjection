@@ -102,9 +102,12 @@ wrong on real interiors: it took a dining table for the floor).
      plate's range (each tracker point against its point on the geometry), in plate px and,
      for plates that are not 1920 wide, in px of a 1920-wide frame (`@HD`); objects over 2 px `@HD`
      are flagged. Backdrop cards (trees) always slide some: use relief or the splat there.
-     No point cloud? Ask the tracking team for their locators, or in NukeX make one with
-     **PointCloudGenerator** (your plate + camera). Without points the build still runs, with
-     the scale from SolveTrackScale, but there is no per-object correction and no slide check.
+     No point cloud? The build triangulates SolveTrackScale's matches with your tracked camera
+     at the two frames and uses those points the same way (`track scale 1.2 from 640
+     triangulated points`): snap and slide check in plain Nuke too. It needs real parallax
+     between the frames (rays over 1° apart) and at least 30 points; otherwise only the scale
+     is solved. The tracking team's locators or NukeX's **PointCloudGenerator** are still
+     better: they come from the whole sequence, not two frames.
    - **track check**: when the camera comes from a Nuke CameraTracker (Create Camera), the info
      line shows its solve error and warns over 1 px `@HD` (over 2 px: the projection will slide).
      For cameras tracked elsewhere it says `track check n/a`, and with a point cloud it warns
@@ -128,7 +131,9 @@ wrong on real interiors: it took a dining table for the floor).
      is ~10–20% off). **camera height** (e.g. 1.6) gives real-world units; 0 keeps MoGe's.
 3. Labels: pick a **label preset** (all, interior, exterior, urban, or your own) and add
    **extra labels**, one per line: `text:role`, or `text:object:shape` to force a shape
-   (`lamp:object:revolve`, `plant pot:object:cylinder`, `column:object:box`). A label already in
+   (`lamp:object:revolve`, `plant pot:object:cylinder`, `column:object:box`), or relief for
+   that label only, the rest staying shapes (`rock:object:relief`, `tree:backdrop:relief`: its
+   own surface as a mesh, no box or card). A label already in
    the preset takes the new role / shape. **show labels** lists what will be sent.
 4. **geometry** (what each object becomes; floor / walls / ceiling / backdrop are planes in all):
    - **shapes** (default): the primitive that fits each object best — box, cylinder, cone,
@@ -139,7 +144,10 @@ wrong on real interiors: it took a dining table for the floor).
    - **relief**: MoGe's own surface as meshes, one per object instance / floor / wall /
      backdrop / other, with the floor / wall planes pushed just behind as fill. ~200k vertices,
      ~25 MB Alembic at HD.
-   Backdrop instances (trees, hills) get a card each at their own distance, except in relief.
+   Backdrop instances (trees, hills) get a card each at their own distance. In relief the
+   cards sit just behind each tree's mesh as fill, so its holes show the tree's own distance,
+   not the far backdrop (about 1% of the relief ends up behind a card: farther things seen
+   through a tree).
    **precision (px)**: sample spacing of the fit (and the relief's vertex spacing); 4 by
    default, 2–3 for more detail. Nodes made before 0.5 keep their old detail level (low =
    boxes at 6 px, medium = boxes at 4 px, high = relief at 3 px).

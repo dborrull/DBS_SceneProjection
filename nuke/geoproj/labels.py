@@ -12,6 +12,7 @@ import os
 
 ROLES = ("floor", "wall", "ceiling", "object", "backdrop", "ignore")
 SHAPES = ("auto", "box", "card", "cylinder", "cone", "sphere", "revolve")   # blender/shapes.py
+RELIEF = "relief"     # per label: that label's surface as a relief mesh (objects and backdrop)
 DEFAULT_PRESET = "all"
 BUILTIN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "label_presets")
 
@@ -40,8 +41,8 @@ def list_presets():
 
 def parse_labels(text):
     """'floor:floor, table:object, lamp:object:revolve' or one per line ('#' comments; a bare
-    'table' = object) -> ordered {label: role or role:shape}. The shape (objects only) forces
-    what the fit makes of that label; without it the fit picks. A later line for the same
+    'table' = object) -> ordered {label: role or role:shape}. The shape forces what the fit
+    makes of that label (objects: a shape or relief; backdrop: relief); without it the fit picks. A later line for the same
     label wins."""
     out = collections.OrderedDict()
     items = [i for line in (text or "").splitlines() for i in line.split("#", 1)[0].split(",")]
@@ -55,8 +56,10 @@ def parse_labels(text):
         shape = parts[2].lower() if len(parts) > 2 else ""
         if role not in ROLES:
             raise LabelError("Unknown role '%s' for '%s' (%s)." % (role, name, ", ".join(ROLES)))
-        if shape and (role != "object" or shape not in SHAPES):
-            raise LabelError("Unknown shape '%s' for '%s' (objects only: %s)." % (shape, name, ", ".join(SHAPES)))
+        if shape and not ((role == "object" and shape in SHAPES + (RELIEF,))
+                          or (role == "backdrop" and shape == RELIEF)):
+            raise LabelError("Unknown shape '%s' for '%s' (objects: %s; backdrop: relief)."
+                             % (shape, name, ", ".join(SHAPES + (RELIEF,))))
         out[name] = role + (":" + shape if shape and shape != "auto" else "")
     return out
 

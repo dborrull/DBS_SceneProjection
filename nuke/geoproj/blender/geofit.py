@@ -435,7 +435,7 @@ GEOMETRY = {
     "cards": {"objects": "card", "cards": True, "mesh": False},
     "boxes": {"objects": "box", "cards": True, "mesh": False},
     "shapes": {"objects": "auto", "cards": True, "mesh": False},
-    "relief": {"objects": None, "cards": False, "mesh": True},
+    "relief": {"objects": None, "cards": True, "mesh": True},     # cards: fill behind each tree's relief
 }
 DEFAULT_STEP = 4
 # Pre-0.5 detail levels -> (geometry, step), for nodes made before the geometry menu.
@@ -782,6 +782,7 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
             nw = np.array([nw[0], nw[1], 0.0]) / math.hypot(nw[0], nw[1])
             prims.append(plane_quad("wall_%d" % (len(prims)), "wall", nw, pw[wl == i]))
 
+    relief_inst = []                      # (instance, group) made relief by their label
     backdrop = valid & (role == ROLE_CODES["backdrop"])
     if backdrop.sum() >= MIN_SEG_SAMPLES:
         cam_w = to_world(np.zeros(3))
@@ -795,11 +796,15 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
                 m = backdrop & (inst == i)
                 if m.sum() < MIN_SEG_SAMPLES:
                     continue
+                if inst_shape.get(i) == "relief" and not geom["mesh"]:
+                    relief_inst.append((i, "backdrop"))    # 'tree:backdrop:relief': a mesh, no card
+                    continue
                 p = pw[m][robust_inliers(pts[m][:, 2])]
                 n_cards += 1
                 card = card_quad("card_%d" % n_cards, p, cam_w[:2])
                 if card is not None:
                     card["label"] = inst_label[i]
+                    card["bd_inst"] = int(i)        # relief: pushed behind this instance's mesh
                     prims.append(card)
             bd = backdrop_quad(pw[backdrop], cam_w, R, info, behind, pct=95)
         else:
@@ -850,6 +855,9 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
             name = label.replace(" ", "_")
             counts[name] = counts.get(name, 0) + 1
             mode = inst_shape.get(it["i"]) or geom["objects"]
+            if mode == "relief":
+                relief_inst.append((it["i"], "objects"))   # 'rock:object:relief': its surface as a mesh
+                continue
             if geom["objects"] in ("card", "box"):
                 mode = geom["objects"]    # the menu's single shape wins over per-label shapes
             prim = make_object("%s_%d" % (name, counts[name]), label, it["p"], it["bottom"], cam_xy, mode)
@@ -857,7 +865,8 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
             prim["inst"] = int(it["i"])       # its SAM3 instance: the silhouette check
             prims.append(prim)
     labelled = valid & (role > 0) & (role != ROLE_CODES["ignore"])
-    ctx = {"pw": pw, "role": role, "inst": inst, "inst_label": inst_label, "min_obj": min_obj}
+    ctx = {"pw": pw, "role": role, "inst": inst, "inst_label": inst_label, "min_obj": min_obj,
+           "relief_inst": relief_inst}
     return prims, R, origin, cam_h, scale, labelled, ctx
 
 
@@ -885,6 +894,25 @@ def relief_meshes(pts, pw, valid, groups, names):
         owner.ravel()[used] = np.where(owner.ravel()[used] < 0, k, owner.ravel()[used])
         meshes.append({"name": name, "type": "mesh", "kind": "mesh", "label": label,
                        "vertices": pw.reshape(-1, 3)[used], "faces": inv.reshape(-1, 3)})
+    return meshes, owner
+
+
+def label_relief(pts, valid, ctx):
+    """Relief meshes for the instances whose label asks for relief ('rock:object:relief',
+    'tree:backdrop:relief'), the rest of the fit staying primitives."""
+    groups = np.full(valid.shape, -1)
+    names, group_of, counts = {}, {}, {}
+    for i, grp in ctx["relief_inst"]:
+        m = valid & (ctx["inst"] == i)
+        label = ctx["inst_label"][i]
+        nm = label.replace(" ", "_")
+        counts[nm] = counts.get(nm, 0) + 1
+        groups[m] = 100 + i
+        names[100 + i] = ("%s_%d" % (nm, counts[nm]), label)
+        group_of[names[100 + i][0]] = grp
+    meshes, owner = relief_meshes(pts, ctx["pw"], valid, groups, names)
+    for me in meshes:
+        me["group"] = group_of[me["name"]]
     return meshes, owner
 
 
@@ -939,6 +967,11 @@ def mesh_mode(prims, pts, valid, scale, ctx=None, pw=None):
         kind_role = {"floor": "floor", "wall": "wall", "ceiling": "ceiling", "backdrop": "backdrop"}
         fills = [push_back(p, pw, valid & (role == ROLE_CODES[kind_role[p["kind"]]]), gap)
                  for p in prims if p["type"] == "plane" and p.get("kind") in kind_role]
+        # Backdrop cards: each behind its own instance's relief, filling its holes at the
+        # tree's own distance (the far backdrop plane alone slides there).
+        bd = valid & (role == ROLE_CODES["backdrop"])
+        fills += [push_back(p, pw, bd & (inst == p["bd_inst"]), gap)
+                  for p in prims if p.get("kind") == "card" and "bd_inst" in p]
     meshes, owner = relief_meshes(pts, pw, valid, groups, names)
     return fills, meshes, owner
 
@@ -965,6 +998,8 @@ def fit(npz_path, json_path, camera_height=None, step=None, seed=0, seg_path=Non
         meshes = owner = None
         if det["mesh"]:
             prims, meshes, owner = mesh_mode(prims, pts, valid, scale, ctx)
+        elif ctx["relief_inst"]:
+            meshes, owner = label_relief(pts, valid, ctx)
         return _finish(prims, R, origin, cam_h, scale, pts, valid, info, step, labelled, meshes, owner,
                        objects=valid & (ctx["role"] == ROLE_CODES["object"]), inst=ctx["inst"])
 

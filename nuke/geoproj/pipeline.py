@@ -122,19 +122,24 @@ def run_blender(blender, npz, json_path, out_dir, camera_height=0.0, seg=None, r
 def build(image_path, out_dir, server="127.0.0.1:8188", focal_mm=0.0, haperture_mm=36.0,
           camera_height=0.0, blender="", labels=None, geometry=("shapes", 4), principal=None,
           is_cancelled=lambda: False, log=print, on_step=lambda s: None, scale_frames=None, cameras=None,
-          splat=False, track_points=None):
+          splat=False, track_points=None, from_matches=None):
     """The whole chain for one plate image. labels: {text prompt: role} for SAM3 (None / {} =
     geometry-only fit); geometry: (cards | boxes | shapes | relief, sample step in px).
     scale_frames / cameras: solve the tracked camera's scale too (estimate_geometry).
     splat: also a SHARP Gaussian splat, in the Alembic's world (res["splat"]: scene_splat.ply).
     track_points: [(u, v, depth)] tracker points at the reference frame -> fit["track_points"]
     (scale between MoGe and the track).
+    from_matches: without track_points, turns SolveTrackScale's triangulated world points into
+    track_points (or None when too few): the snap and the slide check then work without a
+    point cloud.
     Returns run_blender's dict + "geo"."""
     blender_exe = find_blender(blender)        # before ComfyUI: no Blender -> say so at once
     on_step(("MoGe + SAM3" if labels else "MoGe") + (" + SHARP" if splat else "") + " (ComfyUI)")
     geo = estimate_geometry(image_path, out_dir, server, fov_from_focal(focal_mm, haperture_mm),
                             labels=labels, is_cancelled=is_cancelled, log=log,
                             scale_frames=scale_frames, cameras=cameras, splat=splat)
+    if track_points is None and from_matches and (geo.get("scale") or {}).get("points"):
+        track_points = from_matches(geo["scale"]["points"])
     on_step("Blender fit")
     roles_json = os.path.join(out_dir, "labels.json") if geo.get("seg") else None
     res = run_blender(blender_exe, geo["npz"], geo["json"], out_dir, camera_height,
