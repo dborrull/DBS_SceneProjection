@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Info line says `track check n/a` for cameras not from a Nuke CameraTracker (FBX / Alembic
+  from another tracker), instead of saying nothing.
+- README: cameras tracked elsewhere (Alembic preferred, undistorted plate, FBX caveats), and
+  what happens without a point cloud (PointCloudGenerator in NukeX, or the tracking team's
+  locators). Checked: a camera and point cloud written to Alembic by Blender read back exactly.
+
 ## 0.8.1
 
 - Boxes give each face its own vertices, and round shapes their caps: with shared corners Nuke

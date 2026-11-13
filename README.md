@@ -75,6 +75,14 @@ wrong on real interiors: it took a dining table for the floor).
      frame is used, the geometry is placed in its space and the setup Group's `cam` input is
      connected to it, so the render follows it. A window offset (`win_translate`) is taken into
      account: the geometry is rebuilt for its off-centre principal point.
+     **Cameras tracked elsewhere** (3DEqualizer, PFTrack, SynthEyes, Blender...): load the
+     FBX / Alembic into a Camera (*read from file*) and connect it; its world matrix is read,
+     so a hierarchy in the file is fine. Connect the **undistorted** plate (with the tracker's
+     own lens data: its Nuke lens nodes or STMap) and distort the render back afterwards.
+     Plain Nuke is enough; NukeX is only needed for the CameraTracker. Prefer Alembic: a camera
+     and point cloud written by Blender read back exactly. FBX conventions differ between apps
+     (a Blender FBX camera comes into Nuke in cm and turned 90° about Y), so with FBX check the
+     camera lines up with the plate before building.
      **Scale**: MoGe has its own units, the track others; with a moving camera the geometry
      must be in the track's or it slides. Each run matches features (SIFT) between the
      reference frame and another frame of the plate (the extra frames, else the one where the
@@ -94,10 +102,13 @@ wrong on real interiors: it took a dining table for the floor).
      plate's range (each tracker point against its point on the geometry), in plate px and,
      for plates that are not 1920 wide, in px of a 1920-wide frame (`@HD`); objects over 2 px `@HD`
      are flagged. Backdrop cards (trees) always slide some: use relief or the splat there.
+     No point cloud? Ask the tracking team for their locators, or in NukeX make one with
+     **PointCloudGenerator** (your plate + camera). Without points the build still runs, with
+     the scale from SolveTrackScale, but there is no per-object correction and no slide check.
    - **track check**: when the camera comes from a Nuke CameraTracker (Create Camera), the info
      line shows its solve error and warns over 1 px `@HD` (over 2 px: the projection will slide).
-     For cameras tracked elsewhere, it warns when over 30% of the tracker points disagree with
-     the rest (about 7% on a good track).
+     For cameras tracked elsewhere it says `track check n/a`, and with a point cloud it warns
+     when over 30% of the points disagree with the rest (about 7% on a good track).
    - **extra frames** (sequence mode, needs the shot camera): more frames projected onto the
      same geometry, typed (`25 50`) or added with **add current frame** at the Viewer's frame.
      The reference frame stays on top; each extra frame, in the order listed, fills what the

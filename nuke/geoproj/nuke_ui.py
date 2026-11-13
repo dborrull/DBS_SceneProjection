@@ -625,6 +625,9 @@ def _run(node):
             info += " HIGH: the projection may slide - check the track"
         elif terr["worst"] is not None and terr["worst"] * hd > TRACK_ERR_BAD_HD:
             info += " (worst frame %s: check the track there)" % px(terr["worst"])
+    elif shot:
+        # A camera from FBX / Alembic or another tracker: no solve error to read.
+        info += " | track check n/a (camera not from a CameraTracker)"
     scene_scale = 1.0
     solved = res["geo"].get("scale") or {}
     tp = fit.get("track_points") or {}
