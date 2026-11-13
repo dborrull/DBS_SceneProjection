@@ -203,10 +203,17 @@ wrong on real interiors: it took a dining table for the floor).
    - **card from CornerPin**: pin an image (sign, poster, patch) onto the plate with a
      CornerPin2D at the reference frame, in the plate's format (Reformat before it), left
      unconnected to the gizmo. Select it and press the button on the Group: a card is put on
-     its four corners, on the plane MoGe sees under them (snapped to the track), and the
-     pinned image is projected onto it, in a backdrop beside the Group like an extract. The
-     card follows the shot camera and does not depend on the setup's geometry. It renders
-     over everything: anything passing in front (a person) needs its own matte.
+     its four corners and the pinned image is projected onto it, in a backdrop beside the
+     Group like an extract. The menu beside the button says where the card goes:
+     - **standing, facing camera** (default, the usual card): upright and turned to the
+       camera, its bottom edge (to1–to2) standing where MoGe sees it. The pin already has the
+       perspective; the projection keeps it.
+     - **on the surface**: lying on the floor or wall MoGe sees under the four corners
+       (snapped to the track) — the same as texturing that surface with the image.
+
+     Either way the corners land exactly on the CornerPin's at the reference frame and the
+     card does not depend on the setup's geometry. It renders over everything: anything
+     passing in front (a person) needs its own matte.
    - Inside, fixed names: Hold (FrameHold), Camera (projection), Project, Geo, Bind and
      Isolate (USD only), Xform (scene scale + shot camera space), Scene, Render.
    - The geometry is organised by group: `/structure/floor`, `/structure/wall_1`,

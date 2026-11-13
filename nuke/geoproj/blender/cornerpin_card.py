@@ -2,16 +2,22 @@
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """A card on the four corners of a CornerPin, in the world of a setup's Alembic.
 
-blender -b --factory-startup --python cornerpin_card.py -- <run dir> <corners json> <out.abc> <name>
+blender -b --factory-startup --python cornerpin_card.py -- <run dir> <corners json> <out.abc> <name> [facing|surface]
 
 <run dir>: a build's vNNN folder (geo.npz or geo_snapped.npz, geo.json, fit.json).
 <corners json>: [[u, v], x4] the CornerPin's 'to' corners at the reference frame, normalized
 image coordinates from the top left (to1 .. to4: bottom left, bottom right, top right, top left).
 
-The surface under the CornerPin is MoGe's (snapped to the track when the build had tracker
-points): a plane is fitted to its points inside the quad, and each corner's camera ray meets
-that plane. So the card lies on the real surface whatever the setup's geometry there is, and
-its corners land exactly on the CornerPin's at the reference frame. The card has UVs 0-1 from
+Two placements, both with each corner's camera ray meeting a plane, so the corners land
+exactly on the CornerPin's at the reference frame whatever the setup's geometry there is
+(depths are MoGe's, snapped to the track when the build had tracker points):
+
+facing (default): the card stands upright (the fit's Z up) and turned to the camera, its
+    bottom edge standing where MoGe sees the middle of the CornerPin's bottom edge (to1-to2).
+    The usual card: the pinned image already carries the perspective, projection does the rest.
+surface: the card lies on the surface under the CornerPin (a plane fitted to MoGe's points
+    inside the quad): a floor, a wall. Projecting a CornerPin (a homography) onto a plane is
+    the same as texturing it with the unpinned image. The card has UVs 0-1 from
 to1 to to3 (the pinned image's own corners). Written as <name> under a 'cornerpin' group, like
 the setup's objects: /cornerpin/<name>/<name>. Prints CARD {json}: corners, plane residual, points.
 
@@ -29,6 +35,9 @@ import geofit  # noqa: E402
 STEP = 2              # MoGe samples used (every STEP px)
 SHRINK = 0.85         # the quad shrunk towards its centre for the plane fit: its edges bleed
 MIN_POINTS = 30
+FOOT = 0.04           # facing: the bottom edge's depth from samples this far (x width) around its middle
+MIN_FOOT = 5
+MODES = ("facing", "surface")
 
 
 class CardError(RuntimeError):
@@ -70,7 +79,7 @@ def principal_of(fit):
     return None if abs(cx - 0.5) < 1e-9 and abs(cy - 0.5) < 1e-9 else (cx, cy)
 
 
-def card_corners(pts, valid, info, step, corners, fit):
+def card_corners(pts, valid, info, step, corners, fit, mode="facing"):
     """-> (4 corners in the fit's world (Z up), info dict). pts / valid: geofit.load at `step`."""
     k = info["intrinsics_normalized"]
     Hs, Ws = valid.shape
@@ -79,12 +88,35 @@ def card_corners(pts, valid, info, step, corners, fit):
     U, V = np.meshgrid(gu, gv)
     q = np.array(corners, float)
     centre = q.mean(0)
-    inside = _inside(U, V, centre + SHRINK * (q - centre)) & valid
-    if inside.sum() < MIN_POINTS:
-        raise CardError("Only %d depth samples inside the CornerPin (need %d): is it on the plate, "
-                        "and at the reference frame?" % (inside.sum(), MIN_POINTS))
-    n, off, res, used = _plane(pts[inside])
-    rays = np.column_stack([(q[:, 0] - k["cx"]) / k["fx"], (q[:, 1] - k["cy"]) / k["fy"], np.ones(4)])
+    cam = fit["camera"]
+    R = np.array(cam["rotation_matrix"]) @ np.diag([1.0, -1.0, -1.0])     # OpenCV camera -> world
+    ray = lambda uv: np.array([(uv[0] - k["cx"]) / k["fx"], (uv[1] - k["cy"]) / k["fy"], 1.0])
+    rays = np.array([ray(c) for c in q])
+    if mode == "surface":
+        inside = _inside(U, V, centre + SHRINK * (q - centre)) & valid
+        if inside.sum() < MIN_POINTS:
+            raise CardError("Only %d depth samples inside the CornerPin (need %d): is it on the plate, "
+                            "and at the reference frame?" % (inside.sum(), MIN_POINTS))
+        n, off, res, used = _plane(pts[inside])
+        depth = float(np.median(pts[inside][:, 2]))
+        rep = {"residual_rel": res / depth, "points": used, "depth": depth}
+    else:
+        # Upright, turned to the camera, standing on what MoGe sees at the bottom edge's middle.
+        foot = 0.5 * (q[0] + q[1])
+        r = FOOT * max(np.linalg.norm(q[1] - q[0]), 1e-6)
+        near = valid & (np.hypot(U - foot[0], (V - foot[1]) * info["height"] / info["width"]) <= r)
+        if near.sum() < MIN_FOOT:
+            raise CardError("No depth where the CornerPin's bottom edge stands (%d samples): keep "
+                            "to1-to2 on the plate, at the reference frame." % near.sum())
+        depth = float(np.median(pts[near][:, 2]))
+        anchor = ray(foot) * depth
+        up = R.T @ np.array([0.0, 0.0, 1.0])                              # world up, camera space
+        n = -anchor - (-anchor @ up) * up                                 # to the camera, level
+        if np.linalg.norm(n) < 1e-9 * depth:
+            raise CardError("The camera looks straight down on the CornerPin: no upright card.")
+        n /= np.linalg.norm(n)
+        off = float(n @ anchor)
+        rep = {"points": int(near.sum()), "depth": depth}
     den = rays @ n
     if np.any(np.abs(den) < 1e-9):
         raise CardError("The surface under the CornerPin is seen edge-on: no card.")
@@ -92,11 +124,9 @@ def card_corners(pts, valid, info, step, corners, fit):
     if np.any(t <= 0):
         raise CardError("A CornerPin corner is beyond the surface's horizon: keep the corners on it.")
     P = rays * t[:, None]                                   # OpenCV camera space, MoGe units
-    cam = fit["camera"]
-    R = np.array(cam["rotation_matrix"]) @ np.diag([1.0, -1.0, -1.0])
     W = fit.get("units_scale", 1.0) * P @ R.T + np.array(cam["location"])
-    depth = float(np.median(pts[inside][:, 2]))
-    return W, {"residual_rel": res / depth, "points": used, "depth": depth}
+    rep["mode"] = mode
+    return W, rep
 
 
 def load_run(run):
@@ -111,9 +141,12 @@ def load_run(run):
 def main(argv):
     import bpy
     run, corners_json, out, name = argv[:4]
+    mode = argv[4] if len(argv) > 4 else MODES[0]
     pts, valid, info, fit = load_run(run)
     try:
-        W, rep = card_corners(pts, valid, info, STEP, json.load(open(corners_json)), fit)
+        if mode not in MODES:
+            raise CardError("Unknown card mode %r (%s)." % (mode, ", ".join(MODES)))
+        W, rep = card_corners(pts, valid, info, STEP, json.load(open(corners_json)), fit, mode)
     except CardError as e:
         print("CARD ERROR " + str(e))
         sys.exit(2)

@@ -882,11 +882,14 @@ def cornerpin_card(group):
     with open(cj, "w") as f:
         json.dump(corners, f)
     script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blender", "cornerpin_card.py")
+    # Groups built before the mode menu: standing, facing camera.
+    mode = ("surface" if "cornerpin_mode" in group.knobs()
+            and group["cornerpin_mode"].value().startswith("on") else "facing")
     try:
         # As in the build (pipeline.run_blender): without Nuke's USD environment, and not from
         # Nuke's install folder (Windows would load Foundry's USD DLLs from there).
         r = subprocess.run([find_blender(""), "-b", "--factory-startup", "--python", script, "--",
-                            run_dir, cj, out, p], capture_output=True, text=True, timeout=180,
+                            run_dir, cj, out, p, mode], capture_output=True, text=True, timeout=180,
                            env=clean_env()[0], cwd=run_dir,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except Exception as e:
@@ -910,8 +913,12 @@ def cornerpin_card(group):
            clear_selection=True)
     if "gp_extracts" in group.knobs():
         group["gp_extracts"].setValue(n + 1)
-    _log("cornerpin card %s from %s: plane fitted to %d MoGe points (residual %.2f%% of the depth)"
-         % (p, cp, rep["points"], 100 * rep["residual_rel"]))
+    if mode == "surface":
+        _log("cornerpin card %s from %s, on the surface: plane fitted to %d MoGe points (residual "
+             "%.2f%% of the depth)" % (p, cp, rep["points"], 100 * rep["residual_rel"]))
+    else:
+        _log("cornerpin card %s from %s, standing, facing camera: bottom edge at depth %.2f (%d MoGe "
+             "points)" % (p, cp, rep["depth"], rep["points"]))
 
 
 ICON = "geo_projection.png"   # next to geo_projection.py (in the plugin path), + @2x

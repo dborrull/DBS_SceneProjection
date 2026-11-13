@@ -596,6 +596,7 @@ def setup_template(group, ref_frame, abc, cam, prims, align, use_shot_cam=False,
  addUserKnob {1 show_pattern l "pattern" t %s}
  addUserKnob {22 extract l "extract for paint" t %s T %s}
  addUserKnob {22 cornerpin_card l "card from CornerPin" t %s T %s}
+ addUserKnob {4 cornerpin_mode l "" -STARTLINE t %s M {"standing, facing camera" "on the surface"}}
 """ % (nk_quote(what), " ".join(nk_quote(x) for x in show),
        nk_quote("Free mask instead of the menu (when filled, it wins): names or paths, space "
                 "separated, * and ? wildcards; a name without a leading / is searched at any "
@@ -605,10 +606,14 @@ def setup_template(group, ref_frame, abc, cam, prims, align, use_shot_cam=False,
                 "camera; that geometry only -> ScanlineRender through the camera."),
        _py("extract"),
        nk_quote("Select a CornerPin2D (an image pinned onto the plate, in the plate's format) and press: "
-                "a card is put on its four corners, on the surface MoGe sees there (snapped to the "
-                "track), and the pinned image is projected onto it from the reference frame, in a "
-                "backdrop beside this Group. The card does not depend on this setup's geometry."),
-       _py("cornerpin_card"))
+                "a card is put on its four corners and the pinned image is projected onto it from "
+                "the reference frame, in a backdrop beside this Group. The card does not depend on "
+                "this setup's geometry."),
+       _py("cornerpin_card"),
+       nk_quote("Where the CornerPin's card goes. standing, facing camera: upright, turned to the "
+                "camera, its bottom edge (to1-to2) standing where MoGe sees it (the usual card: the "
+                "pin already has the perspective). on the surface: lying on the floor or wall MoGe "
+                "sees under the four corners (like texturing that surface with the image)."))
     v = dict(group=group, ref=int(ref_frame), t=vec(cam["translate"]), r=vec(cam["rotate"]),
              order=cam["rot_order"], focal=cam["focal"], hap=cam["haperture"], vap=cam["vaperture"],
              win=vec(cam["win_translate"]), abc=nk_quote(abc), label=nk_quote(label), info=nk_quote(info),

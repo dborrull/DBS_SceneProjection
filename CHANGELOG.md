@@ -29,9 +29,11 @@
   truck shot a `forest` card at depth 42 hid trees at 61-66, which slid 19-26 px. Tree tracker
   points on the geometry: median ratio 0.62-0.68 -> 0.997.
 - **card from CornerPin** (button on the setup Group): a card on a selected CornerPin2D's four
-  corners at the reference frame, on a plane fitted to MoGe's points inside them, with the
-  pinned image projected onto it (backdrop beside the Group). Corners reproject to 0 px; on
-  the truck shot a checker pinned to the road stays on it through the shot.
+  corners at the reference frame, with the pinned image projected onto it (backdrop beside
+  the Group). A menu beside it: **standing, facing camera** (default: upright, turned to the
+  camera, bottom edge where MoGe sees it) or **on the surface** (on a plane fitted to MoGe's
+  points inside the corners). Corners reproject to 0 px; on the truck shot a checker pinned
+  to the road stays on it through the shot.
 - The extra-labels hint lists `relief`.
 
 ## 0.8.1
