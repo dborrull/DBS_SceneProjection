@@ -109,6 +109,11 @@ wrong on real interiors: it took a dining table for the floor).
      line shows its solve error and warns over 1 px `@HD` (over 2 px: the projection will slide).
      For cameras tracked elsewhere it says `track check n/a`, and with a point cloud it warns
      when over 30% of the points disagree with the rest (about 7% on a good track).
+   - **silhouette check** (with labels): each object's proxy against its SAM3 mask. A proxy
+     that leaves out over 25% of its mask is listed as `silhouette off: table_1 misses 45%`
+     (misplaced or too small: try another shape or more precision). One whose footprint is
+     over 50% background (a chair or table as a box, filling between the legs) counts as a
+     `loose fit`: relief fits those better. Per object figures in the Script Editor.
    - **extra frames** (sequence mode, needs the shot camera): more frames projected onto the
      same geometry, typed (`25 50`) or added with **add current frame** at the Viewer's frame.
      The reference frame stays on top; each extra frame, in the order listed, fills what the

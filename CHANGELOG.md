@@ -7,6 +7,12 @@
 - README: cameras tracked elsewhere (Alembic preferred, undistorted plate, FBX caveats), and
   what happens without a point cloud (PointCloudGenerator in NukeX, or the tracking team's
   locators). Checked: a camera and point cloud written to Alembic by Blender read back exactly.
+- Silhouette check: each object's proxy against its SAM3 mask (`fit.json` verification
+  `silhouette`: miss / spill per object). The info line flags proxies leaving out over 25% of
+  their mask, and counts loose fits (over 50% of the footprint on background: open shapes).
+  On the truck shot all objects pass; in the interior test, box tables and vases miss 45-50%
+  (10% as shapes) and chairs are loose.
+- The panel's info line is split into lines (it was cut off).
 
 ## 0.8.1
 

@@ -266,6 +266,18 @@ def _tracker_of_camera(cam):
     return (parent + "." if parent else "") + m.group(1)
 
 
+SIL_WARN = 0.25             # object proxy leaving out this share of its SAM3 mask: misplaced / too small
+SIL_LOOSE = 0.5             # ...or over background for this share of its footprint: an open shape
+                            # (chair, table: the box fills between the legs), relief fits better
+
+
+def _info_lines(info):
+    """The info line for the panel, one item per line (it was cut off as one long line): the
+    first line keeps version, shapes, lens, error and coverage together."""
+    parts = info.split(" | ")
+    return "\n".join([" | ".join(parts[:4])] + parts[4:])
+
+
 HD_WIDTH = 1920.0           # errors and slides are judged in px of a 1920-wide frame
 TRACK_ERR_WARN_HD = 1.0     # CameraTracker solve error (RMSE) above this: the projection may slide
 TRACK_ERR_BAD_HD = 2.0      # ...above this: it will
@@ -674,6 +686,19 @@ def _run(node):
                 ", ".join("%s: %.3g" % (f, p["scale"] / (fit.get("units_scale") or 1.0)) for f, p in sorted(per.items())))
     elif shot and scale_frames:
         info += " | track scale not solved (too few matches): set 'scene scale' by hand"
+    sil = v.get("silhouette") or {}
+    if sil:
+        _log("silhouette vs SAM3 mask (miss: mask left out by the proxy, spill: proxy over background):")
+        for name, s in sorted(sil.items(), key=lambda kv: -kv[1]["miss"]):
+            _log("  %-24s %5d samples  miss %3.0f%%  spill %3.0f%%%s" % (
+                name, s["samples"], 100 * s["miss"], 100 * s["spill"],
+                "  MISPLACED?" if s["miss"] > SIL_WARN else "  loose" if s["spill"] > SIL_LOOSE else ""))
+        off = sorted(((n, s["miss"]) for n, s in sil.items() if s["miss"] > SIL_WARN), key=lambda kv: -kv[1])
+        if off:
+            info += " | silhouette off: " + ", ".join("%s misses %.0f%%" % (n, 100 * m) for n, m in off[:4])
+        loose = [n for n, s in sil.items() if s["spill"] > SIL_LOOSE and s["miss"] <= SIL_WARN]
+        if loose:
+            info += " | %d loose fit%s (open shapes: relief fits better)" % (len(loose), "s" if len(loose) > 1 else "")
     if res.get("splat"):
         sp = fit.get("splat") or {}
         info += " | splat %.1fM gaussians" % (sp.get("gaussians", 0) / 1e6)
@@ -694,7 +719,7 @@ def _run(node):
     # gizmo would rewire the Groups of earlier runs below it to this one.
     _paste(text, beside=node, positions={group: (x, y + SETUP_DY)}, clear_selection=True)
     node["gp_status"].setValue(version)
-    node["res_info"].setValue(info)
+    node["res_info"].setValue(_info_lines(info))
 
 
 EXTRACT_DX, EXTRACT_STEP = 200, 640    # first backdrop right of the Group; each next one further

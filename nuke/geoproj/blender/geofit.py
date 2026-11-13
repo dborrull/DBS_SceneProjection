@@ -673,6 +673,9 @@ def ground_objects(items, pw_loose):
             it["support"] = "hanging"
 
 
+SIL_DEPTH_TOL = 0.05     # silhouette check: a sample this much deeper than the object's proxy
+                         # is background the proxy would wrongly take the projection of
+SIL_WARN = 0.25          # an object whose proxy misses or spills over this share is flagged
 OCCLUDER_NEARER = 0.92   # a sample below an object at < this fraction of its depth hides its foot
 OCCLUDED_COLS = 0.5      # fraction of the object's image columns that must be hidden that way
 
@@ -851,6 +854,7 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
                 mode = geom["objects"]    # the menu's single shape wins over per-label shapes
             prim = make_object("%s_%d" % (name, counts[name]), label, it["p"], it["bottom"], cam_xy, mode)
             prim["support"] = it.get("support", "floor")
+            prim["inst"] = int(it["i"])       # its SAM3 instance: the silhouette check
             prims.append(prim)
     labelled = valid & (role > 0) & (role != ROLE_CODES["ignore"])
     ctx = {"pw": pw, "role": role, "inst": inst, "inst_label": inst_label, "min_obj": min_obj}
@@ -961,7 +965,8 @@ def fit(npz_path, json_path, camera_height=None, step=None, seed=0, seg_path=Non
         meshes = owner = None
         if det["mesh"]:
             prims, meshes, owner = mesh_mode(prims, pts, valid, scale, ctx)
-        return _finish(prims, R, origin, cam_h, scale, pts, valid, info, step, labelled, meshes, owner)
+        return _finish(prims, R, origin, cam_h, scale, pts, valid, info, step, labelled, meshes, owner,
+                       objects=valid & (ctx["role"] == ROLE_CODES["object"]), inst=ctx["inst"])
 
     labels, planes = extract_planes(pts, nrm, valid, rng)
     fi = choose_floor(labels, planes, pts, valid)
@@ -1032,7 +1037,32 @@ def assign_groups(prims):
             p["group"] = "objects"
 
 
-def _finish(prims, R, origin, cam_h, scale, pts, valid, info, step, labelled, meshes=None, owner=None):
+def silhouettes(prims, objects, inst, z, valid, rays_w, R, cam_w, scale, info, step):
+    """Each object's proxy against its SAM3 mask, on the sample grid: {name: {miss, spill, samples}}.
+    miss: share of the mask the proxy leaves out (projected onto whatever is behind instead).
+    spill: share of the proxy's own footprint over background (deeper than the proxy, or no
+    depth: sky): the projection would paint that background onto the object. Samples where
+    something nearer hides the proxy are fine and not counted."""
+    out = {}
+    for p in prims:
+        if "inst" not in p:
+            continue
+        m = objects & (inst == p["inst"])
+        if m.sum() < MIN_OBJ_SAMPLES:
+            continue
+        if "vertices" in p:
+            t, _ = shapes.rasterize_depth([(0, p)], R, cam_w, scale, info, valid.shape, step)
+        else:
+            t = ray_depths([p], rays_w, cam_w)[0].reshape(valid.shape)
+        foot = np.isfinite(t)
+        behind = foot & ~m & (~valid | (z > t * (1 + SIL_DEPTH_TOL)))
+        out[p["name"]] = {"miss": float((m & ~foot).sum() / m.sum()),
+                          "spill": float(behind.sum() / max(foot.sum(), 1)), "samples": int(m.sum())}
+    return out
+
+
+def _finish(prims, R, origin, cam_h, scale, pts, valid, info, step, labelled, meshes=None, owner=None,
+            objects=None, inst=None):
     """Camera block + verification (proxy depth vs MoGe depth) shared by both paths. Relief
     meshes are made of the MoGe samples themselves: where they have a vertex, that is the
     nearest surface unless a primitive is in front."""
@@ -1093,6 +1123,9 @@ def _finish(prims, R, origin, cam_h, scale, pts, valid, info, step, labelled, me
         report["labelled_fraction"] = float(labelled.sum() / n_valid)
         report["labelled_coverage"] = float(lh.sum() / max(labelled.sum(), 1))
         report["labelled_abs_rel_median"] = float(np.median(rel[lh])) if lh.any() else None
+    if inst is not None:
+        report["silhouette"] = silhouettes(prims, objects, inst, z, valid, rays_w, R,
+                                           np.array(cam["location"]), scale, info, step)
     proxy_depth = np.where(np.isfinite(t), t, 0).astype(np.float32)
     return {"units_scale": scale, "camera_height": float(cam_h * scale), "camera": cam,
             "primitives": prims, "verification": report}, proxy_depth
