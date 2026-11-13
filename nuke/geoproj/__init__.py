@@ -2,4 +2,4 @@
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """AutoProjection: plate -> camera + basic geometry (planes / boxes) for projection in Nuke."""
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"

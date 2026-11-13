@@ -1,6 +1,6 @@
 # AutoProjection
 
-By David Borrull, VFX compositor. MIT licence (see LICENSE). Version 0.8.0 (see CHANGELOG.md).
+By David Borrull, VFX compositor. MIT licence (see LICENSE). Version 0.8.1 (see CHANGELOG.md).
 
 Nuke gizmo: from one frame of a plate, builds a projection camera and geometry (floor, walls,
 backdrop, and each object as a fitted primitive: box, cylinder, cone, sphere, revolve, or card;

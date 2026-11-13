@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.1
 
 - Boxes give each face its own vertices, and round shapes their caps: with shared corners Nuke
   smoothed the normals across the edges, and `project on: front` left part of a face seen
