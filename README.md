@@ -1,6 +1,6 @@
-![AutoProjection: one frame to a projection setup in Nuke](docs/images/banner.jpg)
+![DBS_ComfyProjection: one frame to a projection setup in Nuke](docs/images/banner.jpg)
 
-# AutoProjection
+# DBS_ComfyProjection
 
 By David Borrull, VFX compositor. MIT licence (see LICENSE). Version 0.8.1 (see CHANGELOG.md).
 
@@ -9,12 +9,15 @@ backdrop, and each object as a fitted primitive: box, cylinder, cone, sphere, re
 or relief meshes) and wires them into a projection setup, in Nuke's USD 3D system or the
 classic one. Optionally a Gaussian splat of the plate (Apple SHARP) in the same world.
 
+Standalone: it talks to your ComfyUI directly (MoGe 2 for depth, SAM 3 for masks). It does
+not need DBS_ComfyBridge.
+
 With a tracked camera and its point cloud connected, the geometry is snapped to the tracker's
 own 3D points, so projected paint stays on the plate: on a real handheld truck shot, the
 projection slides under 1.2 px (median, on a 1280-wide plate) across 188 frames.
 
 ```
-Nuke (AutoProjection)  frame -> PNG through the Viewer transform
+Nuke (DBS_ComfyProjection)  frame -> PNG through the Viewer transform
   -> ComfyUI          MoGe 2: metric point map, normals, focal   (SaveMoGeGeometry: float EXR/NPZ/JSON)
                       SAM3: one mask per instance of each label  (SegmentLabels: seg.npz)
                       SHARP (optional): Gaussian splat             (SharpSplat: PLY)
@@ -59,15 +62,15 @@ wrong on real interiors: it took a dining table for the floor).
   import geo_projection
   geo_projection.install_menu()
   ```
-  Then **DBS › DBS_AutoProjection** in the Nodes toolbar (also in **Nodes › 3D**). `DBS_` is
+  Then **DBS › DBS_ComfyProjection** in the Nodes toolbar (also in **Nodes › 3D**). `DBS_` is
   the prefix of David Borrull Silva's tools, so they never clash with other gizmos. The icon,
   `nuke/geo_projection.png` (+ `@2x`), is drawn by `tools/make_icon.py`.
 
 ## Use
 
-<img src="docs/images/panel.png" alt="The DBS_AutoProjection node panel in Nuke" width="560">
+<img src="docs/images/panel.png" alt="The DBS_ComfyProjection node panel in Nuke" width="560">
 
-1. Select the plate, create **AutoProjection**, set the **reference frame** (or **set to current
+1. Select the plate, create **DBS_ComfyProjection**, set the **reference frame** (or **set to current
    frame**). Plates with non-square pixels (DVCPRO HD, anamorphic) are sent to ComfyUI
    stretched to square pixels; the camera maths use the display aspect.
 2. Camera:
@@ -165,7 +168,7 @@ wrong on real interiors: it took a dining table for the floor).
    `Splat` (GeoImport) -> `SplatXform` (linked to Xform) -> `SplatRender`, and an **output** menu:
    projection, splat, or projection over splat (the splat fills what the geometry misses).
 6. **3D system**: **USD** (default) or **classic** — which Nuke 3D nodes the setup is built
-   with. Both give the same result. AutoProjection nodes created before v0.3.0 (no menu) build
+   with. Both give the same result. DBS_ComfyProjection nodes created before v0.3.0 (no menu) build
    the classic setup.
 7. **Build camera + geometry**. Each run writes `vNNN/` (plate PNG, geo.exr/json/npz, seg.npz,
    labels.json, fit.json, scene.abc, scene.blend, blender.log) and pastes **one Group,
@@ -229,7 +232,7 @@ a built-in. New presets show up in the menu of newly created nodes.
 
 ## Model licences
 
-AutoProjection is MIT, but it runs third-party models in your ComfyUI, each under its own
+DBS_ComfyProjection is MIT, but it runs third-party models in your ComfyUI, each under its own
 licence. It does not ship any weights. Check them before commercial work:
 
 - **MoGe 2** (Microsoft): [github.com/microsoft/MoGe](https://github.com/microsoft/MoGe).

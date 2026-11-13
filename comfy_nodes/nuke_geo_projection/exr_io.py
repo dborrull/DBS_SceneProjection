@@ -1,4 +1,4 @@
-# AutoProjection (nuke_geo_projection) - by David Borrull
+# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Minimal OpenEXR writer: scanline, uncompressed, FLOAT channels. numpy only.
 

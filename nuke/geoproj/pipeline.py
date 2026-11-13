@@ -1,4 +1,4 @@
-# AutoProjection (nuke_geo_projection) - by David Borrull
+# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Steps 2-5 without Nuke: plate PNG -> MoGe (ComfyUI) -> Blender fit -> fit.json + scene.abc.
 
@@ -86,7 +86,7 @@ def run_blender(blender, npz, json_path, out_dir, camera_height=0.0, seg=None, r
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     env, dropped = clean_env()
     with open(log_path, "w", encoding="utf-8") as lf:
-        lf.write("[AutoProjection] env vars not passed to Blender: %s\n\n" % ", ".join(dropped))
+        lf.write("[DBS_ComfyProjection] env vars not passed to Blender: %s\n\n" % ", ".join(dropped))
         lf.flush()
         # cwd: Nuke's GUI runs in its install folder and Windows looks for DLLs in the current
         # directory, so Blender would pick up Foundry's USD libraries there and exit.

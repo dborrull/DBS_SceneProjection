@@ -1,4 +1,4 @@
-# AutoProjection (nuke_geo_projection) - by David Borrull
+# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """.nk templates: pasting them creates nodes without Python Node objects
 (Nuke Non-commercial lets Python touch only 10 per session). Pattern from ComfyBridge."""
@@ -105,11 +105,11 @@ def node_template(server, ref_frame, presets, blender=""):
     return """set cut_paste_input [stack 0]
 push $cut_paste_input
 Group {
- name DBS_AutoProjection1
+ name DBS_ComfyProjection1
  tile_color %(tile)d
  knobChanged %(tint)s
  label "\\[value gp_status]\\n\\[value geometry] \\[value system]"
- addUserKnob {20 geoproj l AutoProjection}
+ addUserKnob {20 geoproj l DBS_ComfyProjection}
  addUserKnob {1 server l server%(server_t)s}
  server %(server)s
  addUserKnob {22 test l "test connection" -STARTLINE T %(py_test)s}
@@ -148,7 +148,7 @@ Group {
  addUserKnob {26 div_run l ""}
  addUserKnob {22 run l "<b>  Build camera + geometry  </b>" +STARTLINE T %(py_run)s%(run_t)s}
  addUserKnob {26 res_info l "" +STARTLINE T " "}
- addUserKnob {26 ver l "" +STARTLINE T "<small>AutoProjection v%(version)s  -  by David Borrull</small>"}
+ addUserKnob {26 ver l "" +STARTLINE T "<small>DBS_ComfyProjection v%(version)s  -  by David Borrull</small>"}
  addUserKnob {1 gp_in_file +INVISIBLE}
  addUserKnob {6 gp_in_ocio +INVISIBLE}
  addUserKnob {6 gp_in_raw +INVISIBLE}
@@ -550,7 +550,7 @@ set N_proj_%(f)d [stack 0]
 def setup_template(group, ref_frame, abc, cam, prims, align, use_shot_cam=False, label="",
                    info="", system="USD", geometry="shapes", plate=None, shot_cam=None, extra=(),
                    scale=1.0, splat=None, splat_colorspace="lin_rec709_scene"):
-    """Projection setup as one Group pasted next to the AutoProjection node (which must be
+    """Projection setup as one Group pasted next to the DBS_ComfyProjection node (which must be
     selected so the Group's 'plate' input connects to it), for the classic or USD 3D system.
 
     Inside the Group the node names are fixed and every reference is parent.<knob> or an input,
@@ -565,7 +565,7 @@ def setup_template(group, ref_frame, abc, cam, prims, align, use_shot_cam=False,
     USD setups get an Isolate node (GeoVisibility) driven by the Group's 'show only' / 'pattern'.
     align: {"rotate": xyz deg, "ra_ft": Ra @ fit camera position, "shot_t": camera position} for
     the transform x' = s Ra x + (shot_t - s Ra ft).
-    plate / shot_cam: full names ('root.DBS_AutoProjection1') the Group connects to by
+    plate / shot_cam: full names ('root.DBS_ComfyProjection1') the Group connects to by
     'push [node ...]'; paste with nothing selected. The arguments are kept on the Group
     (gp_setup) for 'extract for paint'.
     extra: sequence mode, [(frame, shot camera knob values at that frame)] projected under the
@@ -655,11 +655,11 @@ def setup_template(group, ref_frame, abc, cam, prims, align, use_shot_cam=False,
  name %(group)s
  tile_color %(tile)d
  label %(label)s
-%(knob_changed)s addUserKnob {20 geoproj l AutoProjection}
+%(knob_changed)s addUserKnob {20 geoproj l DBS_ComfyProjection}
  addUserKnob {7 scene_scale l "scene scale" t %(scale_t)s R 0.1 10}
  scene_scale %(scale).6g
 %(output_knob)s%(isolate_knobs)s addUserKnob {26 info l "" +STARTLINE T %(info)s}
- addUserKnob {26 ver l "" +STARTLINE T "<small>AutoProjection v%(version)s  -  by David Borrull</small>"}
+ addUserKnob {26 ver l "" +STARTLINE T "<small>DBS_ComfyProjection v%(version)s  -  by David Borrull</small>"}
  addUserKnob {1 gp_setup +INVISIBLE}
  gp_setup %(setup)s
  addUserKnob {3 gp_extracts +INVISIBLE}

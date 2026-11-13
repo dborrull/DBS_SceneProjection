@@ -1,4 +1,4 @@
-# AutoProjection (nuke_geo_projection) - by David Borrull
+# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """SHARP Gaussian splat -> the fit's world, Y up (the Alembic's space), as a standard 3DGS PLY.
 

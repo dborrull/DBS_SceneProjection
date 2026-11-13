@@ -1,4 +1,4 @@
-# AutoProjection (nuke_geo_projection) - by David Borrull
+# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Small 3x3 / rigid-transform helpers in plain Python (Nuke's Python may lack numpy).
 

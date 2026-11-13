@@ -1,4 +1,4 @@
-# AutoProjection (nuke_geo_projection) - by David Borrull
+# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Draws the README banner: docs/images/banner.jpg (1600 x 440), in the style of ComfyBridge's.
 
@@ -24,9 +24,11 @@ S = 2                                       # supersampling of the drawn illustr
 BG = (22, 24, 26)
 TEAL_GLOW = (47, 104, 90)
 FONTS = "C:/Windows/Fonts"
-TITLE = "AutoProjection"
+TITLE = "DBS_ComfyProjection"
 SUB = "One frame -> projection setup in Nuke"
 FEATURES = "MoGe 2  \u00b7  SAM 3  \u00b7  Blender  \u00b7  snapped to your camera track"
+TITLE_MAX_W = 700                           # px: the title ends before the picture
+TITLE_PREFIX = (120, 205, 180)              # the DBS_ prefix, in the icon's teal
 FADE_X0, FADE_X1 = 1090, 1200               # the right picture fades in over these columns
 
 
@@ -151,7 +153,16 @@ def main():
     im.alpha_composite(icon, (95, 95))
 
     d = ImageDraw.Draw(im)
-    d.text((402, 148), TITLE, font=font("segoeui.ttf", 104), fill=(255, 255, 255))
+    # Title: the DBS_ prefix in the icon's teal, the name in white, sized to end before the
+    # picture on the right (TITLE_MAX_W), on the same baseline as before.
+    prefix, name = TITLE.split("_", 1) if "_" in TITLE else ("", TITLE)
+    prefix += "_" if prefix else ""
+    size = 104
+    while size > 40 and font("segoeui.ttf", size).getlength(prefix + name) > TITLE_MAX_W:
+        size -= 2
+    f = font("segoeui.ttf", size)
+    d.text((402, 248), prefix, font=f, fill=TITLE_PREFIX, anchor="ls")
+    d.text((402 + f.getlength(prefix), 248), name, font=f, fill=(255, 255, 255), anchor="ls")
     d.text((406, 272), SUB.replace("->", "\u2192"), font=font("segoeuil.ttf", 37), fill=(214, 226, 222))
     d.text((406, 326), FEATURES, font=font("segoeuil.ttf", 26), fill=(150, 168, 162))
 
