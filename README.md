@@ -1,3 +1,5 @@
+![AutoProjection: one frame to a projection setup in Nuke](docs/images/banner.jpg)
+
 # AutoProjection
 
 By David Borrull, VFX compositor. MIT licence (see LICENSE). Version 0.8.1 (see CHANGELOG.md).
