@@ -1,4 +1,4 @@
-# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
+# DBS_SceneProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Object primitives beyond boxes, fitted to an object's MoGe points in the fit's world
 (Z up, floor at Z = 0). numpy only.

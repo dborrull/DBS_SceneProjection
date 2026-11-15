@@ -1,6 +1,6 @@
-# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
+# DBS_SceneProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
-"""DBS_ComfyProjection entry point for Nuke: plate -> camera + basic geometry (planes / boxes).
+"""DBS_SceneProjection entry point for Nuke: plate -> camera + basic geometry (planes / boxes).
 
 Install: copy geo_projection.py and the geoproj folder to ~/.nuke (or add this folder to the
 plugin path), then in ~/.nuke/menu.py:

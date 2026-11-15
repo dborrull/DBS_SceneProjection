@@ -3,7 +3,7 @@
 Nuke17.1.exe --nc -t tests/nuke_track_points.py <script.nk> <read> <camera> <point cloud> <out_dir>
         [--ref 0] [--preset all]
 
-Opens the script, makes a new DBS_ComfyProjection on <read> with <camera> on 'cam' and <point cloud>
+Opens the script, makes a new DBS_SceneProjection on <read> with <camera> on 'cam' and <point cloud>
 (e.g. CameraTrackerPointCloud1) on 'points', builds it and prints the scale it got. Then
 tests/check_track_points.py compares the fitted geometry's depth with the tracker points.
 """

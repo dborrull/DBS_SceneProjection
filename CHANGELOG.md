@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Renamed AutoProjection -> DBS_ComfyProjection (node, menu, README, banner). Python modules,
+- Renamed AutoProjection -> DBS_SceneProjection (node, menu, README, banner). Python modules,
   the `geoproj` tab and the `GeoProj_v###` Groups keep their names: old scripts still work.
 - Info line says `track check n/a` for cameras not from a Nuke CameraTracker (FBX / Alembic
   from another tracker), instead of saying nothing.

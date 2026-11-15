@@ -1,6 +1,6 @@
-# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
+# DBS_SceneProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
-"""Nuke side of DBS_ComfyProjection. Every entry point gets the DBS_ComfyProjection node from its button
+"""Nuke side of DBS_SceneProjection. Every entry point gets the DBS_SceneProjection node from its button
 (nuke.thisNode()) and reaches internal nodes by path, so a run costs at most four Node
 objects (this node, the shot camera, the active Viewer, the graph to paste into); pasted
 setups connect themselves by name - Nuke Non-commercial allows 10 per session. Helpers marked "ComfyBridge" are
@@ -26,7 +26,7 @@ SETUP_DX, SETUP_DY = 150, 60
 
 
 def _log(msg):
-    print("[DBS_ComfyProjection] %s" % msg)
+    print("[DBS_SceneProjection] %s" % msg)
 
 
 # ---- ComfyBridge helpers ------------------------------------------------------------------
@@ -212,7 +212,7 @@ def run(node):
         _run(node)
     except ComfyError as e:
         node["gp_status"].setValue("error")
-        nuke.message("DBS_ComfyProjection:\n" + str(e))
+        nuke.message("DBS_SceneProjection:\n" + str(e))
 
 
 def _camera_at(cam, frame):
@@ -504,7 +504,7 @@ def add_frame(node):
     frames = [str(f) for f in _extra_frames(node)]
     f = str(int(nuke.frame()))
     if f == str(int(node["ref_frame"].value())):
-        nuke.message("DBS_ComfyProjection: frame %s is the reference frame (always projected, on top)." % f)
+        nuke.message("DBS_SceneProjection: frame %s is the reference frame (always projected, on top)." % f)
         return
     if f not in frames:
         frames.append(f)
@@ -553,14 +553,14 @@ def _run(node):
         # pixels, as MoGe / SHARP expect; the camera maths below use the display aspect.
         node["gp_par"].setValue(par)
     elif abs(par - 1.0) > 1e-6:
-        raise ComfyError("The plate has non-square pixels (pixel aspect %.3g) and this DBS_ComfyProjection "
+        raise ComfyError("The plate has non-square pixels (pixel aspect %.3g) and this DBS_SceneProjection "
                          "node is older than v0.8: create a new one." % par)
     aspect = node.width() * par / float(node.height())
     if abs(par - 1.0) > 1e-6:
         _log("pixel aspect %.3g: frames sent with square pixels (%dx%d display)"
              % (par, round(node.width() * par), node.height()))
 
-    task = nuke.ProgressTask("DBS_ComfyProjection")
+    task = nuke.ProgressTask("DBS_SceneProjection")
     try:
         task.setMessage("Writing frame %d" % frame)
         try:
@@ -792,7 +792,7 @@ def extract(group):
     fed by the same plate and camera (connected by name in the pasted text). Each extract
     goes one backdrop further right. Costs two Node objects (the Group, the graph it is in)."""
     if "gp_setup" not in group.knobs():
-        nuke.message("DBS_ComfyProjection: this setup was built before v0.6.\nBuild it again to extract objects.")
+        nuke.message("DBS_SceneProjection: this setup was built before v0.6.\nBuild it again to extract objects.")
         return
     setup = json.loads(group["gp_setup"].getText())      # value() would evaluate the [ ] as TCL
     prims = [tuple(p) for p in setup["prims"]]
@@ -801,7 +801,7 @@ def extract(group):
     pattern = group["show_pattern"].value().strip()
     chosen = select_prims(prims, group["show_only"].value(), pattern)
     if not chosen:
-        nuke.message("DBS_ComfyProjection: pick an object or group in 'show only' (or type a 'pattern') first.")
+        nuke.message("DBS_SceneProjection: pick an object or group in 'show only' (or type a 'pattern') first.")
         return
     if not pattern:
         pattern = "/" + group["show_only"].value()
@@ -846,14 +846,14 @@ def cornerpin_card(group):
     cornerpin_card.py, a few seconds), and the CornerPin's output projected onto it, pasted in a
     backdrop beside the Group like 'extract for paint'. Costs two Node objects."""
     if "gp_setup" not in group.knobs():
-        nuke.message("DBS_ComfyProjection: this setup was built before v0.6.\nBuild it again first.")
+        nuke.message("DBS_SceneProjection: this setup was built before v0.6.\nBuild it again first.")
         return
     setup = json.loads(group["gp_setup"].getText())
     prefix = _graph_prefix(group)
     graph = "root" + ("." + prefix[:-1] if prefix else "")
     cp = _selected_cornerpin(graph)
     if not cp:
-        nuke.message("DBS_ComfyProjection: select the CornerPin2D first (the image pinned onto the "
+        nuke.message("DBS_SceneProjection: select the CornerPin2D first (the image pinned onto the "
                      "plate at the reference frame), then press 'card from CornerPin'.")
         return
     full = "root." + group.fullName()
@@ -863,7 +863,7 @@ def cornerpin_card(group):
     if plate not in ("", "0"):
         pw, ph = nuke.expression("root.%s.width" % plate), nuke.expression("root.%s.height" % plate)
         if (int(w), int(h)) != (int(pw), int(ph)):
-            nuke.message("DBS_ComfyProjection: the CornerPin's output is %dx%d, the plate %dx%d. Put a "
+            nuke.message("DBS_SceneProjection: the CornerPin's output is %dx%d, the plate %dx%d. Put a "
                          "Reformat to the plate's format before the CornerPin (or merge it over the "
                          "plate), so the image lines up with the plate." % (w, h, pw, ph))
             return
@@ -893,13 +893,13 @@ def cornerpin_card(group):
                            env=clean_env()[0], cwd=run_dir,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except Exception as e:
-        nuke.message("DBS_ComfyProjection: Blender failed: %s" % e)
+        nuke.message("DBS_SceneProjection: Blender failed: %s" % e)
         return
     lines = r.stdout.splitlines()
     err = [l[len("CARD ERROR "):] for l in lines if l.startswith("CARD ERROR ")]
     rep = [json.loads(l[len("CARD "):]) for l in lines if l.startswith("CARD {")]
     if err or not rep or not os.path.isfile(out):
-        nuke.message("DBS_ComfyProjection: no card.\n%s" % (err[0] if err else (r.stdout + r.stderr)[-800:]))
+        nuke.message("DBS_SceneProjection: no card.\n%s" % (err[0] if err else (r.stdout + r.stderr)[-800:]))
         return
     rep = rep[0]
     s2 = dict(setup, abc=out, prims=[["cornerpin", p]])
@@ -925,9 +925,9 @@ ICON = "geo_projection.png"   # next to geo_projection.py (in the plugin path), 
 
 
 def install_menu():
-    """DBS_ComfyProjection under the DBS button in the Nodes toolbar (David Borrull Silva's tools),
+    """DBS_SceneProjection under the DBS button in the Nodes toolbar (David Borrull Silva's tools),
     and in Nodes > 3D."""
     cmd = "import geo_projection; geo_projection.create_node()"
     tb = nuke.menu("Nodes").addMenu("DBS", icon=ICON)
-    tb.addCommand("DBS_ComfyProjection", cmd, icon=ICON)
-    nuke.menu("Nodes").addMenu("3D").addCommand("DBS_ComfyProjection", cmd, icon=ICON)
+    tb.addCommand("DBS_SceneProjection", cmd, icon=ICON)
+    nuke.menu("Nodes").addMenu("3D").addCommand("DBS_SceneProjection", cmd, icon=ICON)

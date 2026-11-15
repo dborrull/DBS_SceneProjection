@@ -1,4 +1,4 @@
-# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
+# DBS_SceneProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Draws the README banner: docs/images/banner.jpg (1600 x 440), in the style of ComfyBridge's.
 
@@ -24,7 +24,7 @@ S = 2                                       # supersampling of the drawn illustr
 BG = (22, 24, 26)
 TEAL_GLOW = (47, 104, 90)
 FONTS = "C:/Windows/Fonts"
-TITLE = "DBS_ComfyProjection"
+TITLE = "DBS_SceneProjection"
 SUB = "AI projection setup from one frame, in Nuke"
 FEATURES = "MoGe 2 depth  \u00b7  SAM 3 masks  \u00b7  snapped to your camera track"
 TITLE_MAX_W = 700                           # px: the title ends before the picture

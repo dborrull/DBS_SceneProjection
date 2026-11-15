@@ -1,4 +1,4 @@
-# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
+# DBS_SceneProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
 """Snap MoGe's depth to the camera track's own 3D points, region by region (numpy only).
 

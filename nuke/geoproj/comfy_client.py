@@ -148,7 +148,7 @@ class ComfyClient(object):
         if self.cloud and len(file_data) > 50 * 1024 * 1024:
             raise ComfyError("%s is %.0f MB; Comfy Cloud accepts files up to 50 MB."
                              % (name, len(file_data) / 1048576.0))
-        boundary = "----DBS_ComfyProjection" + uuid.uuid4().hex
+        boundary = "----DBS_SceneProjection" + uuid.uuid4().hex
         parts = []
         for key, val in (("overwrite", "true"), ("type", "input"), ("subfolder", subfolder)):
             parts.append(("--%s\r\nContent-Disposition: form-data; name=\"%s\"\r\n\r\n%s\r\n"

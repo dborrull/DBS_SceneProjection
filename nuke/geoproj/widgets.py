@@ -1,6 +1,6 @@
-# DBS_ComfyProjection (nuke_geo_projection) - by David Borrull
+# DBS_SceneProjection (nuke_geo_projection) - by David Borrull
 # MIT License - Copyright (c) 2026 David Borrull. See LICENSE.
-"""Qt widgets for the DBS_ComfyProjection panel (PyCustom_Knob).
+"""Qt widgets for the DBS_SceneProjection panel (PyCustom_Knob).
 
 LabelsEditor: a tall, always open text box for the extra labels. Nuke's own multiline knob
 shows as one line with a scroll bar, which does not look like a place to type. The text is
