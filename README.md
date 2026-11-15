@@ -138,7 +138,8 @@ wrong on real interiors: it took a dining table for the floor).
    that label only, the rest staying shapes (`rock:object:relief`, `tree:backdrop:relief`: its
    own surface as a mesh, no box or card). A label already in
    the preset takes the new role / shape. **show labels** lists what will be sent.
-4. **geometry** (what each object becomes; floor / walls / ceiling / backdrop are planes in all):
+4. **geometry** (what each object becomes; floor / walls / ceiling / backdrop are planes in all;
+   a shape forced by a label, `truck:object:box`, wins in every mode):
    - **shapes** (default): the primitive that fits each object best — box, cylinder, cone,
      sphere or revolve (a lathe profile: vases, lamps, pots) — unless the label forces one. A
      card is never picked automatically (it is no volume), only on request;

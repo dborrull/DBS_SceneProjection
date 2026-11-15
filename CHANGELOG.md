@@ -35,6 +35,9 @@
   points inside the corners). Corners reproject to 0 px; on the truck shot a checker pinned
   to the road stays on it through the shot.
 - The extra-labels hint lists `relief`.
+- A shape forced by a label (`truck:object:box`) wins over the geometry menu in every mode, as
+  `relief` already did. In cards and boxes the menu used to win: `truck:object:box` with
+  cards gave the truck cards.
 
 ## 0.8.1
 

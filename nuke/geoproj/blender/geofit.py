@@ -908,12 +908,12 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
             label = inst_label[it["i"]]
             name = label.replace(" ", "_")
             counts[name] = counts.get(name, 0) + 1
+            # A shape forced by the label ('truck:object:box') wins over the geometry menu, in
+            # every mode, as 'relief' does: the menu is the default for the other labels.
             mode = inst_shape.get(it["i"]) or geom["objects"]
             if mode == "relief":
                 relief_inst.append((it["i"], "objects"))   # 'rock:object:relief': its surface as a mesh
                 continue
-            if geom["objects"] in ("card", "box"):
-                mode = geom["objects"]    # the menu's single shape wins over per-label shapes
             prim = make_object("%s_%d" % (name, counts[name]), label, it["p"], it["bottom"], cam_xy, mode)
             prim["support"] = it.get("support", "floor")
             prim["inst"] = int(it["i"])       # its SAM3 instance: the silhouette check
