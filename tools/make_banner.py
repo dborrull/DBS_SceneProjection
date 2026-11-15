@@ -6,14 +6,12 @@ python tools/make_banner.py [--image picture.jpg]      (needs Pillow; fonts: Seg
 
 Left: the toolbar icon, large, on a teal gradient, with the name and two lines of text.
 Right: --image (fitted to the height, faded in from the left), else a drawn illustration of
-the idea: a projector throwing the plate onto the shapes the fit makes (box, cylinder, cone,
-sphere) on a floor grid, a Gaussian splat tree behind.
+the idea: a projector throwing the plate onto a box and a cylinder standing on a floor grid.
 """
 
 import argparse
 import math
 import os
-import random
 import sys
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
@@ -58,7 +56,8 @@ def background():
 
 
 def illustration():
-    """Projector -> frustum -> boxes on a floor grid, drawn at S x and scaled down (RGBA)."""
+    """Projector -> frustum -> a box and a cylinder on a floor grid, drawn at S x and scaled
+    down (RGBA)."""
     w, h = W * S, H * S
     im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
@@ -76,8 +75,10 @@ def illustration():
         y += k
         k *= 1.45
 
-    def face(pts, top, bottom):
-        """A face filled with a vertical gradient: the projected picture."""
+    def face(pts, top, bottom, stops=None):
+        """A face filled with a vertical gradient: the projected picture. stops: [(t, colour)]
+        for more than two colours (t from 0 at the top to 1 at the bottom)."""
+        stops = stops or [(0.0, top), (1.0, bottom)]
         mask = Image.new("L", (w, h), 0)
         ImageDraw.Draw(mask).polygon([P(*p) for p in pts], fill=255)
         ys = [p[1] for p in pts]
@@ -85,7 +86,10 @@ def illustration():
         gd = ImageDraw.Draw(grad)
         y0, y1 = int(min(ys) * S), int(max(ys) * S)
         for yy in range(y0, y1 + 1):
-            gd.line([(0, yy), (w, yy)], fill=lerp(top, bottom, (yy - y0) / max(y1 - y0, 1)) + (255,))
+            t = (yy - y0) / float(max(y1 - y0, 1))
+            k = max(i for i in range(len(stops)) if stops[i][0] <= t or i == 0)
+            (t0, c0), (t1, c1) = stops[k], stops[min(k + 1, len(stops) - 1)]
+            gd.line([(0, yy), (w, yy)], fill=lerp(c0, c1, (t - t0) / (t1 - t0) if t1 > t0 else 0) + (255,))
         im.paste(grad, (0, 0), mask)
 
     edge = (150, 230, 205, 255)
@@ -115,46 +119,9 @@ def illustration():
         for x in (cx - rx, cx + rx):
             d.line([P(x, top), P(x, bottom)], fill=edge, width=2 * S)
 
-    def sphere(cx, cy, r, c0, c1):
-        face(ellipse_pts(cx, cy, r, r, 0, 2 * math.pi, 64), c0, c1)
-        # Shading: darker away from the projector (up left), as a soft overlay.
-        shade = Image.new("L", (w, h), 0)
-        ImageDraw.Draw(shade).ellipse([P(cx - r * 0.55, cy - r * 0.75), P(cx + r * 1.6, cy + r * 1.4)],
-                                      fill=120)
-        shade = shade.filter(ImageFilter.GaussianBlur(r * S * 0.35))
-        clip = Image.new("L", (w, h), 0)
-        ImageDraw.Draw(clip).ellipse([P(cx - r, cy - r), P(cx + r, cy + r)], fill=255)
-        im.paste((0, 0, 0, 255), (0, 0), ImageChops.multiply(shade, clip))
-        d.ellipse([P(cx - r, cy - r), P(cx + r, cy + r)], outline=edge, width=2 * S)
-
-    def cone(cx, apex, base, rx, ry, c0, c1):
-        body = [(cx, apex)] + ellipse_pts(cx, base, rx, ry, 0, math.pi)
-        face(body, c0, c1)
-        d.line([P(*q) for q in body + [body[0]]], fill=edge, width=2 * S, joint="curve")
-
-    def splat(cx, cy, rx, ry, n=170, seed=7):
-        """A Gaussian splat: soft coloured blobs in a tree-like cloud, no outline."""
-        rnd = random.Random(seed)
-        layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        ld = ImageDraw.Draw(layer)
-        for _ in range(n):
-            a, t = rnd.uniform(0, 2 * math.pi), rnd.random() ** 0.6
-            x, y = cx + rx * t * math.cos(a), cy + ry * t * math.sin(a)
-            g = rnd.uniform(0.35, 1.0)
-            col = lerp((40, 92, 60), (150, 200, 120), g * (1.0 - 0.4 * (y - cy + ry) / (2 * ry)))
-            sx, sy = rnd.uniform(6, 15), rnd.uniform(3, 8)
-            ld.ellipse([P(x - sx, y - sy), P(x + sx, y + sy)], fill=col + (rnd.randint(90, 200),))
-        trunk = [(cx - 5, cy + ry * 0.6), (cx + 5, cy + ry * 0.6), (cx + 7, cy + ry + 34), (cx - 7, cy + ry + 34)]
-        ld.polygon([P(*q) for q in trunk], fill=(92, 72, 52, 200))
-        im.alpha_composite(layer.filter(ImageFilter.GaussianBlur(1.3 * S)))
-
-    # Back to front. A splat tree behind, then the shapes the fit makes, each with the projected
-    # picture: sky-warm at the top, green-brown at the bottom (a plate in miniature).
-    splat(1538, 112, 58, 52)
-    cylinder(1527, 214, 292, 24, 8, (220, 178, 126), (82, 102, 62))
-    cone(1560, 268, 348, 22, 7, (214, 170, 120), (88, 104, 64))
+    # Projected picture: sky-warm at the top, green-brown at the bottom (a plate in miniature).
+    cylinder(1527, 226, 298, 27, 8, (214, 170, 120), (88, 104, 64))
     front = box(1290, 196, 1440, 330, 50, -32, (232, 196, 140), (70, 98, 62))
-    sphere(1478, 350, 30, (226, 186, 132), (96, 110, 70))
     # Frustum from the projector's lens to the big box's front face.
     lens = (1205, 140)
     ray = (255, 255, 255, 120)
