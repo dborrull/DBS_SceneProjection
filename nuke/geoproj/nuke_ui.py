@@ -732,8 +732,8 @@ def _run(node):
     group = _unique_name("GeoProj_" + version, node)
     text = setup_template(group, frame, res["abc"], cam,
                           [(p.get("group", "objects"), p["name"]) for p in fit["primitives"]], align,
-                          use_shot_cam=bool(shot), label="%s %s %s%s%s" % (
-                              version, _geometry(node)[0], system, " +%d fr" % len(extra) if extra else "",
+                          use_shot_cam=bool(shot), label="%s %s %s ref %d%s%s" % (
+                              version, _geometry(node)[0], system, frame, " +%d fr" % len(extra) if extra else "",
                               " +splat" if res.get("splat") else ""),
                           info="%s | %s" % (info, res["abc"]), system=system, geometry=_geometry(node)[0],
                           plate="root." + node.fullName(), shot_cam=shot and "root." + shot["link"],

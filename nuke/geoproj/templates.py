@@ -108,7 +108,7 @@ Group {
  name DBS_SceneProjection1
  tile_color %(tile)d
  knobChanged %(tint)s
- label "\\[value gp_status]\\n\\[value geometry] \\[value system]"
+ label "\\[value gp_status]\\n\\[value geometry] \\[value system]\\nref frame \\[value ref_frame]"
  addUserKnob {20 geoproj l DBS_SceneProjection}
  addUserKnob {1 server l server%(server_t)s}
  server %(server)s

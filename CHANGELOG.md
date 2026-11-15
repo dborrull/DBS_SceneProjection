@@ -35,6 +35,8 @@
   points inside the corners). Corners reproject to 0 px; on the truck shot a checker pinned
   to the road stays on it through the shot.
 - The extra-labels hint lists `relief`.
+- The reference frame shows on the node: `ref frame 34` under the gizmo, `ref 34` in the setup
+  Group's label (`v002 cards USD ref 34`). Gizmos created before keep their old label.
 - A shape forced by a label (`truck:object:box`) wins over the geometry menu in every mode, as
   `relief` already did. In cards and boxes the menu used to win: `truck:object:box` with
   cards gave the truck cards.
