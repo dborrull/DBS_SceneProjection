@@ -104,7 +104,8 @@ def estimate_geometry(image_path, out_dir, server="127.0.0.1:8188", fov_x_degree
 
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
-    result = {"dir": out_dir}
+    # The plate as the server knows it: later prompts (generated meshes) reuse the upload.
+    result = {"dir": out_dir, "plate": image_path, "comfy_image": wf[LOAD_ID]["inputs"]["image"]}
     for item in files:
         ext = item["filename"].rsplit(".", 1)[-1]
         dest = os.path.join(out_dir, "geo." + ext).replace("\\", "/")
@@ -119,6 +120,7 @@ def estimate_geometry(image_path, out_dir, server="127.0.0.1:8188", fov_x_degree
         if not seg:
             raise ComfyError("The workflow finished but SegmentLabels returned no file.")
         result["seg"] = client.download(seg[0], os.path.join(out_dir, "seg.npz").replace("\\", "/"))
+        result["seg_item"] = seg[0]
         with open(os.path.join(out_dir, "labels.json"), "w") as f:
             json.dump(labels, f, indent=2)
         result["labels"] = dict(labels)

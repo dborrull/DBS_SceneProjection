@@ -4,7 +4,7 @@
 
 blender -b --factory-startup --python nuke/geoproj/blender/build_scene.py -- <geo.npz> <geo.json> <out_dir>
         [--camera-height 1.6] [--geometry shapes|boxes|cards|relief] [--step 4]
-        [--seg seg.npz --roles labels.json] [--splat sharp.ply]
+        [--seg seg.npz --roles labels.json] [--splat sharp.ply] [--meshes <run>/meshes]
 
 Writes <out_dir>/fit.json (camera, primitives, verification, nuke_camera knob values), fit_proxy_depth.npy,
 scene.blend and scene.abc (camera + one mesh per primitive; Alembic is Y-up for Nuke).
@@ -82,6 +82,61 @@ def add_relief(p):
     return obj
 
 
+GEN_VOXELS = 64           # remesh cells along the longest side: Pixal3D meshes are not quite closed,
+                          # and finer voxels drop parts of them (truck: 98% of the outline kept at 64,
+                          # 68% at 128)
+GEN_FACES = 20000         # triangles kept after the remesh
+
+
+def load_generated(folder):
+    """{SAM3 instance: (vertices, triangles)} from <folder>/inst_<i>.glb (meshgen.py), in
+    Blender's axes after the glTF import (x right, z up, the crop seen along +y).
+    Pixal3D gives 1-6 M triangles. A voxel remesh makes them one closed surface (no holes, all
+    normals outward, which 'project on: front' needs), then a decimate takes it to GEN_FACES.
+    Vertex clustering left holes and inward faces: black patches in Nuke."""
+    import bmesh
+    import glob
+    import re
+    import time
+    out = {}
+    for path in sorted(glob.glob(os.path.join(folder, "inst_*.glb"))):
+        i = int(re.search(r"inst_(\d+)\.glb$", path).group(1))
+        t0 = time.time()
+        before = set(bpy.data.objects)
+        bpy.ops.import_scene.gltf(filepath=path)
+        objs = [o for o in bpy.data.objects if o not in before and o.type == "MESH"]
+        V, F, base, n_in = [], [], 0, 0
+        for o in objs:
+            n_in += len(o.data.polygons)
+            rem = o.modifiers.new("remesh", "REMESH")
+            rem.mode = "VOXEL"
+            rem.voxel_size = max(max(o.dimensions), 1e-6) / GEN_VOXELS
+            dg = bpy.context.evaluated_depsgraph_get()
+            n = len(o.evaluated_get(dg).data.polygons)
+            if n > GEN_FACES:
+                o.modifiers.new("decimate", "DECIMATE").ratio = GEN_FACES / float(n)
+            dg = bpy.context.evaluated_depsgraph_get()
+            bm = bmesh.new()
+            bm.from_mesh(o.evaluated_get(dg).to_mesh())
+            bmesh.ops.triangulate(bm, faces=bm.faces[:])
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+            bm.verts.index_update()
+            m = np.array(o.matrix_world)
+            v = np.array([p.co[:] for p in bm.verts], float) @ m[:3, :3].T + m[:3, 3]
+            f = np.array([[p.index for p in t.verts] for t in bm.faces], np.int64)
+            bm.free()
+            V.append(v)
+            F.append(f + base)
+            base += len(v)
+        for o in [o for o in bpy.data.objects if o not in before]:
+            bpy.data.objects.remove(o)
+        if V:
+            out[i] = (np.concatenate(V), np.concatenate(F))
+            print("GEOFIT generated mesh instance %d: %d -> %d faces, %.1fs" % (
+                i, n_in, len(out[i][1]), time.time() - t0))
+    return out
+
+
 def add_camera(cam):
     data = bpy.data.cameras.new("plate_cam")
     data.sensor_fit = "HORIZONTAL"
@@ -152,6 +207,7 @@ def main():
     ap.add_argument("--splat", default=None, help="SHARP splat PLY -> <out_dir>/scene_splat.ply")
     ap.add_argument("--track-points", default=None,
                     help="JSON [(u, v, depth)] of tracker points at the reference frame -> track scale")
+    ap.add_argument("--meshes", default=None, help="folder of inst_<i>.glb generated for 'mesh' labels")
     a = ap.parse_args(argv)
     os.makedirs(a.out_dir, exist_ok=True)
 
@@ -169,8 +225,13 @@ def main():
                 print("GEOFIT snap %-22s %4d pts used %4d tilt %-5s error %.2f%% -> %s" % (
                     e["name"], e["points"], e["used"], e["tilt"], 100 * e["before"],
                     "%.2f%%" % (100 * e["after"]) if "after" in e else e.get("skipped", "kept")))
+    gen = load_generated(a.meshes) if a.meshes else None
     result, proxy = geofit.fit(a.npz, a.json, a.camera_height, a.step, seg_path=a.seg, roles=roles,
-                               geometry=a.geometry, principal=a.principal, detail=a.detail)
+                               geometry=a.geometry, principal=a.principal, detail=a.detail, gen_meshes=gen)
+    for p in result["primitives"]:
+        if "mesh_fit" in p or "mesh_fallback" in p:
+            print("GEOFIT mesh %s: %s %s" % (p["name"], p.get("mesh_fallback") and "fallback to %s (%s)"
+                                             % (p.get("shape"), p["mesh_fallback"]) or "placed", p.get("mesh_fit")))
     np.save(os.path.join(a.out_dir, "fit_proxy_depth.npy"), proxy)
 
     clear_scene()

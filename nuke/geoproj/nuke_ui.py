@@ -15,6 +15,7 @@ import tempfile
 
 import nuke
 
+from . import meshgen
 from .colour import IN_VIEWER, LUT, _CS_SRGB, ocio_names, parse_viewer_process, pick_colorspace
 from .comfy_client import ComfyClient, ComfyError, next_version_dir
 from .labels import DEFAULT_PRESET, ROLES, LabelError, effective_labels, list_presets
@@ -536,6 +537,14 @@ def _run(node):
         focal, haperture = shot["focal"], shot["haperture"]
         _log("lens from %s at frame %d: %.2f mm / %.2f mm" % (shot["name"], frame, focal, haperture))
     labels = _labels(node)
+    gen = meshgen.mesh_labels(labels)
+    if gen and not nuke.ask(
+            "These labels generate a 3D model of each object found (Pixal3D in ComfyUI, experimental):\n\n  %s\n\n"
+            "About 1-1.5 min per object, up to %d objects: a label that matches several objects "
+            "(three vases) takes several minutes. Models already made for this plate and mask are "
+            "reused. Objects cut by the frame edge, or hanging, often fall back to a fitted shape."
+            "\n\nBuild now?" % (", ".join("%s:object:mesh" % k for k in gen), meshgen.MAX_MESHES)):
+        return
     dv = None
     if node["in_color"].value() == IN_VIEWER:
         dv = _viewer_process()
@@ -643,6 +652,13 @@ def _run(node):
         info += " (labelled areas %.0f%%)" % (100 * v["labelled_coverage"])
     if extra:
         info += " | frames %s" % " > ".join(str(f) for f in [frame] + extra)
+    for p in fit["primitives"]:
+        if p.get("mesh_fit") or p.get("mesh_fallback"):
+            _log("mesh %s: %s %s" % (p["name"], "fallback to %s (%s)" % (p.get("shape"), p["mesh_fallback"])
+                                    if p.get("mesh_fallback") else "placed", p.get("mesh_fit") or ""))
+    fell = ["%s -> %s" % (p["name"], p.get("shape")) for p in fit["primitives"] if p.get("mesh_fallback")]
+    if fell:
+        info += " | mesh not used: %s (Script Editor)" % ", ".join(fell[:4])
     hd = HD_WIDTH / float(node.width())        # plate px -> px of a 1920-wide frame
 
     def px(v, d=1):

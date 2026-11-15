@@ -430,6 +430,58 @@ class SharpSplat:
         return {"ui": {"geo": [{"filename": os.path.basename(path), "subfolder": subfolder, "type": "output"}]}}
 
 
+class ObjectMeshCrop:
+    """One SAM3 instance of SegmentLabels' file, cropped for an image-to-3D model (Pixal3D):
+    a square around the mask's bounding box (pad x its longer side), the object on black, at
+    `size` px. crop_fov: the crop's horizontal FOV in degrees for the plate's fov_x, which
+    Pixal3DConditioning takes so the mesh comes out pixel aligned with the crop.
+    seg_file: SegmentLabels' file, 'subfolder/name.npz' in the output folder."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "seg_file": ("STRING", {"default": "geo_projection/seg_00001_.npz"}),
+                "instance": ("INT", {"default": 0, "min": 0, "max": 9999}),
+                "fov_x": ("FLOAT", {"default": 50.0, "min": 1.0, "max": 170.0, "step": 0.01}),
+                "pad": ("FLOAT", {"default": 1.1, "min": 1.0, "max": 2.0, "step": 0.01}),
+                "size": ("INT", {"default": 1024, "min": 256, "max": 2048, "step": 64}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE", "FLOAT")
+    RETURN_NAMES = ("crop", "crop_fov")
+    FUNCTION = "crop"
+    CATEGORY = "nuke_geo_projection"
+
+    def crop(self, image, seg_file, instance, fov_x, pad, size):
+        import torch
+        from PIL import Image
+        path = os.path.join(folder_paths.get_output_directory(), seg_file)
+        with np.load(path) as d:
+            if instance >= len(d["mask_label"]):
+                raise RuntimeError("ObjectMeshCrop: %s has no instance %d." % (seg_file, instance))
+            m = d["masks"][instance]
+        img = image[0, ..., :3].cpu().numpy()
+        H, W = img.shape[:2]
+        if m.shape != (H, W):
+            raise RuntimeError("ObjectMeshCrop: mask %s is not the image's size %s." % (m.shape, (H, W)))
+        ys, xs = np.nonzero(m)
+        if not len(xs):
+            raise RuntimeError("ObjectMeshCrop: instance %d is empty." % instance)
+        side = int(math.ceil(max(xs.max() - xs.min() + 1, ys.max() - ys.min() + 1) * pad))
+        cx, cy = (xs.min() + xs.max() + 1) / 2.0, (ys.min() + ys.max() + 1) / 2.0
+        x0, y0 = int(round(cx - side / 2.0)), int(round(cy - side / 2.0))
+        canvas = np.zeros((side, side, 3), np.float32)        # outside the plate: black too
+        sx0, sy0, sx1, sy1 = max(x0, 0), max(y0, 0), min(x0 + side, W), min(y0 + side, H)
+        canvas[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0] = (img * m[..., None])[sy0:sy1, sx0:sx1]
+        pil = Image.fromarray((canvas * 255).clip(0, 255).astype(np.uint8)).resize((size, size), Image.LANCZOS)
+        crop = torch.from_numpy(np.asarray(pil).astype(np.float32) / 255.0)[None]
+        f_px = W / (2.0 * math.tan(math.radians(fov_x) / 2.0))
+        return (crop, math.degrees(2.0 * math.atan(side / (2.0 * f_px))))
+
+
 def _get(geo, key, B):
     v = geo.get(key)
     if v is None:
@@ -442,9 +494,10 @@ def _get(geo, key, B):
 
 NODE_CLASS_MAPPINGS = {"SaveMoGeGeometry": SaveMoGeGeometry, "SegmentLabels": SegmentLabels,
                        "SaveDA3Geometry": SaveDA3Geometry, "SolveTrackScale": SolveTrackScale,
-                       "SharpSplat": SharpSplat}
+                       "SharpSplat": SharpSplat, "ObjectMeshCrop": ObjectMeshCrop}
 NODE_DISPLAY_NAME_MAPPINGS = {"SaveMoGeGeometry": "Save MoGe Geometry (float EXR/NPZ)",
                               "SegmentLabels": "Segment Labels (SAM3, one model)",
                               "SaveDA3Geometry": "Save DA3 Geometry (NPZ)",
                               "SolveTrackScale": "Solve Track Scale (MoGe vs tracked camera)",
-                              "SharpSplat": "SHARP Splat at MoGe focal (PLY)"}
+                              "SharpSplat": "SHARP Splat at MoGe focal (PLY)",
+                              "ObjectMeshCrop": "Object Crop for image-to-3D (SAM3 instance)"}

@@ -14,7 +14,8 @@ import re
 import subprocess
 import time
 
-from .comfy_client import ComfyError, next_version_dir
+from . import meshgen
+from .comfy_client import ComfyClient, ComfyError, next_version_dir
 from .estimate import estimate_geometry
 from .labels import DEFAULT_PRESET, effective_labels, list_presets
 
@@ -65,11 +66,13 @@ def clean_env(environ=None):
 
 def run_blender(blender, npz, json_path, out_dir, camera_height=0.0, seg=None, roles_json=None,
                 geometry=("shapes", 4), principal=None, is_cancelled=lambda: False, log=print, timeout=600,
-                splat=None, track_points=None):
+                splat=None, track_points=None, meshes=None):
     cmd = [blender, "-b", "--factory-startup", "--python", BUILD_SCENE, "--", npz, json_path, out_dir,
            "--geometry", geometry[0]] + (["--step", str(geometry[1])] if geometry[1] else [])
     if splat:
         cmd += ["--splat", splat]
+    if meshes:
+        cmd += ["--meshes", meshes]
     if track_points:
         tp = os.path.join(out_dir, "track_points.json")
         with open(tp, "w") as f:
@@ -134,17 +137,23 @@ def build(image_path, out_dir, server="127.0.0.1:8188", focal_mm=0.0, haperture_
     point cloud.
     Returns run_blender's dict + "geo"."""
     blender_exe = find_blender(blender)        # before ComfyUI: no Blender -> say so at once
+    if meshgen.mesh_labels(labels):
+        meshgen.check(ComfyClient(server))     # and no Pixal3D for 'mesh' labels
     on_step(("MoGe + SAM3" if labels else "MoGe") + (" + SHARP" if splat else "") + " (ComfyUI)")
     geo = estimate_geometry(image_path, out_dir, server, fov_from_focal(focal_mm, haperture_mm),
                             labels=labels, is_cancelled=is_cancelled, log=log,
                             scale_frames=scale_frames, cameras=cameras, splat=splat)
     if track_points is None and from_matches and (geo.get("scale") or {}).get("points"):
         track_points = from_matches(geo["scale"]["points"])
+    meshes = None
+    if geo.get("seg") and meshgen.mesh_labels(labels):
+        on_step("Pixal3D meshes (ComfyUI)")
+        meshes = meshgen.generate(ComfyClient(server), geo, labels, out_dir, is_cancelled=is_cancelled, log=log)
     on_step("Blender fit")
     roles_json = os.path.join(out_dir, "labels.json") if geo.get("seg") else None
     res = run_blender(blender_exe, geo["npz"], geo["json"], out_dir, camera_height,
                       geo.get("seg"), roles_json, geometry, principal, is_cancelled=is_cancelled, log=log,
-                      splat=geo.get("splat"), track_points=track_points)
+                      splat=geo.get("splat"), track_points=track_points, meshes=meshes)
     res["geo"] = geo
     return res
 

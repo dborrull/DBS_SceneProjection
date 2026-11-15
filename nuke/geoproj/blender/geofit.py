@@ -17,6 +17,7 @@ import math
 
 import numpy as np
 
+import meshfit
 import shapes
 
 # Tunables (fractions of the median scene depth / of the valid samples).
@@ -784,7 +785,30 @@ def make_object(name, label, p, bottom, cam_xy, mode):
     return prim
 
 
-def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rng, geom):
+def mesh_object(name, label, p, bottom, cam_xy, gen, mask, pts, valid, info, step, to_world):
+    """A generated mesh (label 'sofa:object:mesh') placed on its instance (meshfit.py), or, when
+    there is none or it does not match the mask, the best fitted shape with the reason why."""
+    if gen is None:
+        why = "no generated mesh"
+        rep = {}
+    else:
+        Vc, rep = meshfit.place(gen[0], gen[1], mask, pts, valid, info, step)
+        why = rep.get("reason")
+        if Vc is not None:
+            vw = to_world(Vc)
+            lo, hi = vw.min(0), vw.max(0)
+            return {"type": "generated", "kind": "mesh", "shape": "mesh", "name": name, "label": label,
+                    "group": "objects", "vertices": vw, "faces": np.asarray(gen[1]),
+                    "center": ((lo + hi) / 2).tolist(), "size": (hi - lo).tolist(),
+                    "residual": rep.get("depth_rel_median"), "mesh_fit": rep}
+    prim = make_object(name, label, p, bottom, cam_xy, "auto")
+    prim["mesh_fallback"] = why
+    if rep:
+        prim["mesh_fit"] = rep
+    return prim
+
+
+def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rng, geom, gen_meshes=None):
     role, inst, inst_label, inst_shape = load_roles(seg_path, roles, valid.shape, step)
     floor = valid & (role == ROLE_CODES["floor"])
     ground = fit_ground(pts, nrm, floor, rng) if floor.sum() >= MIN_SEG_SAMPLES else None
@@ -914,7 +938,12 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
             if mode == "relief":
                 relief_inst.append((it["i"], "objects"))   # 'rock:object:relief': its surface as a mesh
                 continue
-            prim = make_object("%s_%d" % (name, counts[name]), label, it["p"], it["bottom"], cam_xy, mode)
+            if mode == "mesh":
+                prim = mesh_object("%s_%d" % (name, counts[name]), label, it["p"], it["bottom"], cam_xy,
+                                   (gen_meshes or {}).get(int(it["i"])), inst == it["i"], pts, valid, info,
+                                   step, to_world)
+            else:
+                prim = make_object("%s_%d" % (name, counts[name]), label, it["p"], it["bottom"], cam_xy, mode)
             prim["support"] = it.get("support", "floor")
             prim["inst"] = int(it["i"])       # its SAM3 instance: the silhouette check
             prims.append(prim)
@@ -1035,9 +1064,10 @@ def mesh_mode(prims, pts, valid, scale, ctx=None, pw=None):
 # ---- main -----------------------------------------------------------------------------
 
 def fit(npz_path, json_path, camera_height=None, step=None, seed=0, seg_path=None, roles=None,
-        geometry="shapes", principal=None, detail=None):
+        geometry="shapes", principal=None, detail=None, gen_meshes=None):
     """seg_path + roles ({label: role or role:shape}): planes and objects follow the labels.
     Without them, floor / walls / objects are guessed from geometry alone.
+    gen_meshes: {SAM3 instance: (vertices, faces)} generated for 'mesh' labels (meshgen.py).
     geometry: cards | boxes | shapes | relief (see GEOMETRY); step: sample spacing in px.
     detail (low | medium | high): pre-0.5 levels, mapped to a geometry + step."""
     if detail:
@@ -1050,7 +1080,7 @@ def fit(npz_path, json_path, camera_height=None, step=None, seed=0, seg_path=Non
     n_valid = valid.sum()
     if seg_path:
         prims, R, origin, cam_h, scale, labelled, ctx = fit_semantic(
-            pts, nrm, valid, info, seg_path, roles or {}, step, camera_height, rng, det)
+            pts, nrm, valid, info, seg_path, roles or {}, step, camera_height, rng, det, gen_meshes)
         meshes = owner = None
         if det["mesh"]:
             prims, meshes, owner = mesh_mode(prims, pts, valid, scale, ctx)

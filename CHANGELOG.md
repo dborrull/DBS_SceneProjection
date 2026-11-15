@@ -41,6 +41,18 @@
   `relief` already did. In cards and boxes the menu used to win: `truck:object:box` with
   cards gave the truck cards.
 
+- **Generated mesh per label** (`sofa:object:mesh`, experimental): each instance is cropped on
+  the server (new `ObjectMeshCrop` node) and turned into a mesh by Pixal3D (ComfyUI's own
+  nodes, geometry only). Blender remeshes it into one closed surface (64 voxels along its
+  longest side, under 20k triangles, normals outward: `project on: front` works) and places it
+  (`blender/meshfit.py`): turned to the camera ray, scaled and shifted to match the SAM3 mask,
+  pushed to MoGe's depth. Falls back to the best fitted shape when the silhouette IoU is under
+  0.6 (info line). Meshes are reused from earlier versions while plate and mask are unchanged;
+  a confirmation lists the mesh labels before building. Tested on 7 objects, 5 placed: chair
+  0.91, sculpture 0.89, truck 0.89, sofa 0.76, a chair cut by the frame edge 0.65 (depth
+  0.5-2.9% off MoGe); a truck cut by the frame edge and a hanging lamp fell back to boxes.
+  ComfyUI needs a restart.
+
 ## 0.8.1
 
 - Boxes give each face its own vertices, and round shapes their caps: with shared corners Nuke

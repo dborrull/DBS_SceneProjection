@@ -63,7 +63,10 @@ TIPS = {
                     "~/.nuke/geo_projection_labels (one text:role per line).",
     "extra_labels": "Your own labels on top of the preset, one per line, text:role. Roles: floor, "
                     "wall, ceiling, object (a box per instance), backdrop (far cards / plane: trees, "
-                    "hills), ignore (no geometry). A label already in the preset takes this role.",
+                    "hills), ignore (no geometry). A label already in the preset takes this role. "
+                    "A third field forces the shape: sofa:object:box, rock:object:relief, or "
+                    "sofa:object:mesh (experimental: a mesh generated from the plate by Pixal3D in "
+                    "ComfyUI, about a minute per object; best on whole, well-seen objects).",
     "show_labels": "Show the labels that will be sent (preset + extra).",
     "geometry": "What each object becomes. shapes: the best fitting primitive per object (box, "
                 "cylinder, cone, sphere or revolve for vases and lamps; force one per label with "

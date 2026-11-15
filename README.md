@@ -138,6 +138,21 @@ wrong on real interiors: it took a dining table for the floor).
    that label only, the rest staying shapes (`rock:object:relief`, `tree:backdrop:relief`: its
    own surface as a mesh, no box or card). A label already in
    the preset takes the new role / shape. **show labels** lists what will be sent.
+   **Generated mesh** (`sofa:object:mesh`, experimental): each instance of that label is cropped from the plate
+   and turned into a closed mesh by Pixal3D in ComfyUI (geometry only, about a minute per
+   object on an 8 GB card, at most 8 per build), then placed on its SAM3 mask and on MoGe's
+   depth. Unlike a primitive it has the object's shape, and it goes on behind whatever
+   covers part of it. Depth along the camera ray is the model's own guess: one frame cannot
+   check it. If the mesh does not match the mask (IoU under 0.6) the label falls back to the
+   best fitted shape and the info line says so. Works best on whole, well-seen objects
+   standing on something (chair, sculpture, sofa, truck: IoU 0.76-0.91); objects cut by the
+   frame edge are borderline or fall back, and hanging ones (a pendant lamp) fall back.
+   Meshes are reused from earlier versions of the
+   node while the plate and the object's mask are the same. Needs ComfyUI with the Pixal3D /
+   TRELLIS.2 nodes (built in from late 2026) and three files from
+   [Comfy-Org/Pixal3D](https://huggingface.co/Comfy-Org/Pixal3D) (about 7.9 GB):
+   `diffusion_models/pixal3d_int8_convrot.safetensors`, `clip_vision/dino_v3_L_naf_fp32.safetensors`,
+   `vae/trellis_2_shape_vae_bf16.safetensors`.
 4. **geometry** (what each object becomes; floor / walls / ceiling / backdrop are planes in all;
    a shape forced by a label, `truck:object:box`, wins in every mode):
    - **shapes** (default): the primitive that fits each object best — box, cylinder, cone,
@@ -256,6 +271,9 @@ licence. It does not ship any weights. Check them before commercial work:
 - **SHARP** (Apple, via comfyui-sharp; only with **Gaussian splat** on): the weights are under
   Apple's research licence, for research / non-commercial use only,
   [github.com/apple/ml-sharp](https://github.com/apple/ml-sharp).
+- **Pixal3D** (TencentARC; only with `:mesh` labels): MIT as repackaged by Comfy-Org,
+  [huggingface.co/TencentARC/Pixal3D](https://huggingface.co/TencentARC/Pixal3D). Its DINOv3
+  image encoder comes from Meta, under Meta's DINOv3 licence: check it too.
 
 ## Tests (`tests/`)
 
