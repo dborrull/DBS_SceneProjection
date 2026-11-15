@@ -52,6 +52,13 @@
   0.91, sculpture 0.89, truck 0.89, sofa 0.76, a chair cut by the frame edge 0.65 (depth
   0.5-2.9% off MoGe); a truck cut by the frame edge and a hanging lamp fell back to boxes.
   ComfyUI needs a restart.
+- Shapes on far objects: an object's depth along the camera ray is capped at 2x its visible
+  width or height, and a round shape (cylinder, cone, sphere, revolve) is only used when its
+  diameter is within 1.5x the width it shows. Objects mostly under the floor plane (far away,
+  slight floor tilt) keep their own height. Park shot (benches, cars, buildings at 20-100 m):
+  a 35 m revolve on a building, a 3.9 m sphere on a scooter, benches 4-5.5 m and cars 12-16 m
+  long, two cars 0.1 m and below 0 m tall -> boxes of their size; depth error 11.6% -> 4.8%.
+  Interior: the sculpture is a 0.2 m box (was a 1.8 m revolve); truck shot unchanged.
 
 ## 0.8.1
 

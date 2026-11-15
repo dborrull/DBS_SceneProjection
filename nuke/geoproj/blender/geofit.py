@@ -694,6 +694,13 @@ def ground_objects(items, pw_loose):
         it["c"], it["reach"] = _footprint(p)
     for it in items:
         p = it["p"]
+        if it["top"] <= 0.5 * (it["top"] - it["low"]):
+            # Mostly under the floor plane (far away, where a slightly tilted floor is off by
+            # about as much as the object is tall): its own points, not a box cut flat or with
+            # a negative height (park shot: cars at 64-74 m, 0.1 m and -0.04 m tall).
+            it["bottom"] = it["low"]
+            it["support"] = "below floor"
+            continue
         if it["low"] <= FLOAT_GAP * it["top"]:
             it["bottom"] = 0.0
             continue
@@ -751,14 +758,52 @@ def occluded_below(mask, z, valid, look=3):
     return hidden >= OCCLUDED_COLS * len(cols)
 
 
+DEPTH_MAX_RATIO = 2.0     # an object's depth along the camera ray: at most this x its visible
+                          # width or height (whichever is larger)
+ROUND_MAX_WIDTH = 1.5     # a round shape's diameter: at most this x the object's visible width
+
+
+def _seen_size(p, cam_xy):
+    """(unit view direction in xy, visible width across it, height) of the points. Width and
+    height come from the pixels and hold at any distance; depth along the ray is MoGe's, and
+    on far objects (a bench at 50 m) its noise spreads the points over metres."""
+    m = np.median(p[:, :2], 0)
+    u = m - np.asarray(cam_xy, float)[:2]
+    u = u / max(np.linalg.norm(u), 1e-9)
+    lat = p[:, :2] @ np.array([-u[1], u[0]])
+    return u, float(np.percentile(lat, 98) - np.percentile(lat, 2)), \
+        float(np.percentile(p[:, 2], 98) - np.percentile(p[:, 2], 2))
+
+
+def cap_box_depth(box, u, limit):
+    """Shorten the box side that runs along the view direction u to `limit`, keeping its near
+    face where it is. Park shot: benches at 20-50 m were 4-5.5 m long boxes, cars 12-16 m."""
+    a = math.radians(box["rotation_z_deg"])
+    axes = np.array([[math.cos(a), math.sin(a)], [-math.sin(a), math.cos(a)]])
+    k = int(np.argmax(np.abs(axes @ u)))
+    if abs(axes[k] @ u) < math.cos(math.radians(45)) or box["size"][k] <= limit:
+        return box
+    cut = box["size"][k] - limit
+    box = dict(box)
+    box["size"] = list(box["size"])
+    box["size"][k] = float(limit)
+    c = np.array(box["center"][:2]) - axes[k] * np.sign(axes[k] @ u) * cut / 2
+    box["center"] = [float(c[0]), float(c[1]), box["center"][2]]
+    box["depth_capped"] = True
+    return box
+
+
 def make_object(name, label, p, bottom, cam_xy, mode):
     """One object as the requested shape ('card', 'box', a round shape) or, with 'auto', the
     shape whose surface stays closest to the points (weighted by shapes.COMPLEXITY)."""
+    u, width, height = _seen_size(p, cam_xy)
+    depth_max = DEPTH_MAX_RATIO * max(width, height)
     card = card_quad(name, p, cam_xy)
-    box = box_from_points(name, p, cam_xy, bottom)
+    box = cap_box_depth(box_from_points(name, p, cam_xy, bottom), u, depth_max)
     cands = {"box": (box, shapes.box_residual(box, p))}
     boxp = box_from_planes(name, p, cam_xy, bottom)
     if boxp is not None:
+        boxp = cap_box_depth(boxp, u, depth_max)
         rp = shapes.box_residual(boxp, p)
         if rp <= cands["box"][1]:
             cands["box"] = (boxp, rp)
@@ -770,7 +815,9 @@ def make_object(name, label, p, bottom, cam_xy, mode):
     if len(p) >= shapes.MIN_ROUND_SAMPLES:
         for k in want:
             prim = fitters[k](p, bottom)
-            if prim is not None:
+            # A round object's diameter is the width it shows. Wider: the "curve" is depth
+            # noise on something flat (park shot: a 35 m revolve on a building at 50 m).
+            if prim is not None and prim["size"][0] <= ROUND_MAX_WIDTH * width:
                 cands[k] = (prim, prim["residual"])
     if mode in cands:
         kind = mode
