@@ -6,11 +6,14 @@ python tools/make_banner.py [--image picture.jpg]      (needs Pillow; fonts: Seg
 
 Left: the toolbar icon, large, on a teal gradient, with the name and two lines of text.
 Right: --image (fitted to the height, faded in from the left), else a drawn illustration of
-the idea: a projector throwing the plate onto boxes standing on a floor grid.
+the idea: a projector throwing the plate onto the shapes the fit makes (box, cylinder, cone,
+sphere) on a floor grid, a Gaussian splat tree behind.
 """
 
 import argparse
+import math
 import os
+import random
 import sys
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
@@ -98,9 +101,60 @@ def illustration():
             d.line([P(*q) for q in poly + [poly[0]]], fill=edge, width=2 * S, joint="curve")
         return front
 
-    # Projected picture: sky-warm at the top, green-brown at the bottom (a plate in miniature).
-    small = box(1500, 232, 1555, 298, 22, -14, (214, 170, 120), (88, 104, 64))
+    def ellipse_pts(cx, cy, rx, ry, a0, a1, n=48):
+        return [(cx + rx * math.cos(a), cy + ry * math.sin(a))
+                for a in (a0 + (a1 - a0) * i / float(n) for i in range(n + 1))]
+
+    def cylinder(cx, top, bottom, rx, ry, c0, c1):
+        body = ellipse_pts(cx, top, rx, ry, math.pi, 0) + ellipse_pts(cx, bottom, rx, ry, 0, math.pi)
+        face(body, c0, c1)
+        lid = ellipse_pts(cx, top, rx, ry, 0, 2 * math.pi)
+        face(lid, lerp(c0, (255, 255, 255), 0.15), lerp(c0, (0, 0, 0), 0.1))
+        for poly in (lid, ellipse_pts(cx, bottom, rx, ry, 0, math.pi)):
+            d.line([P(*q) for q in poly], fill=edge, width=2 * S, joint="curve")
+        for x in (cx - rx, cx + rx):
+            d.line([P(x, top), P(x, bottom)], fill=edge, width=2 * S)
+
+    def sphere(cx, cy, r, c0, c1):
+        face(ellipse_pts(cx, cy, r, r, 0, 2 * math.pi, 64), c0, c1)
+        # Shading: darker away from the projector (up left), as a soft overlay.
+        shade = Image.new("L", (w, h), 0)
+        ImageDraw.Draw(shade).ellipse([P(cx - r * 0.55, cy - r * 0.75), P(cx + r * 1.6, cy + r * 1.4)],
+                                      fill=120)
+        shade = shade.filter(ImageFilter.GaussianBlur(r * S * 0.35))
+        clip = Image.new("L", (w, h), 0)
+        ImageDraw.Draw(clip).ellipse([P(cx - r, cy - r), P(cx + r, cy + r)], fill=255)
+        im.paste((0, 0, 0, 255), (0, 0), ImageChops.multiply(shade, clip))
+        d.ellipse([P(cx - r, cy - r), P(cx + r, cy + r)], outline=edge, width=2 * S)
+
+    def cone(cx, apex, base, rx, ry, c0, c1):
+        body = [(cx, apex)] + ellipse_pts(cx, base, rx, ry, 0, math.pi)
+        face(body, c0, c1)
+        d.line([P(*q) for q in body + [body[0]]], fill=edge, width=2 * S, joint="curve")
+
+    def splat(cx, cy, rx, ry, n=170, seed=7):
+        """A Gaussian splat: soft coloured blobs in a tree-like cloud, no outline."""
+        rnd = random.Random(seed)
+        layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        ld = ImageDraw.Draw(layer)
+        for _ in range(n):
+            a, t = rnd.uniform(0, 2 * math.pi), rnd.random() ** 0.6
+            x, y = cx + rx * t * math.cos(a), cy + ry * t * math.sin(a)
+            g = rnd.uniform(0.35, 1.0)
+            col = lerp((40, 92, 60), (150, 200, 120), g * (1.0 - 0.4 * (y - cy + ry) / (2 * ry)))
+            sx, sy = rnd.uniform(6, 15), rnd.uniform(3, 8)
+            ld.ellipse([P(x - sx, y - sy), P(x + sx, y + sy)], fill=col + (rnd.randint(90, 200),))
+        trunk = [(cx - 5, cy + ry * 0.6), (cx + 5, cy + ry * 0.6), (cx + 7, cy + ry + 34), (cx - 7, cy + ry + 34)]
+        ld.polygon([P(*q) for q in trunk], fill=(92, 72, 52, 200))
+        im.alpha_composite(layer.filter(ImageFilter.GaussianBlur(1.3 * S)))
+
+    # Back to front. A splat tree behind, then the shapes the fit makes, each with the projected
+    # picture: sky-warm at the top, green-brown at the bottom (a plate in miniature).
+    splat(1538, 112, 58, 52)
+    cylinder(1527, 214, 292, 24, 8, (220, 178, 126), (82, 102, 62))
+    cone(1560, 268, 348, 22, 7, (214, 170, 120), (88, 104, 64))
     front = box(1290, 196, 1440, 330, 50, -32, (232, 196, 140), (70, 98, 62))
+    sphere(1478, 350, 30, (226, 186, 132), (96, 110, 70))
     # Frustum from the projector's lens to the big box's front face.
     lens = (1205, 140)
     ray = (255, 255, 255, 120)
