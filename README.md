@@ -13,6 +13,8 @@ classic one. Optionally a Gaussian splat of the plate (Apple SHARP) in the same 
 
 ![A street corner (left) and its setup in Nuke's 3D viewer with the urban label preset: walls as planes, floor and the shot camera (right)](docs/images/example_alley.jpg)
 
+![The same frame as plate, cards, boxes, shapes, relief, and relief with a Gaussian splat (SHARP)](docs/images/geometry_types.jpg)
+
 Standalone: it talks to your ComfyUI directly (MoGe 2 for depth, SAM 3 for masks). It does
 not need DBS_ComfyBridge.
 
