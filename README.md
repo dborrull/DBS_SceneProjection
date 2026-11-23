@@ -9,6 +9,8 @@ backdrop, and each object as a fitted primitive: box, cylinder, cone, sphere, re
 or relief meshes) and wires them into a projection setup, in Nuke's USD 3D system or the
 classic one. Optionally a Gaussian splat of the plate (Apple SHARP) in the same world.
 
+![One frame of a street plaza (left) and the setup it builds in Nuke's 3D viewer: camera, floor, walls and fitted shapes with the frame projected on them (right)](docs/images/example_street.jpg)
+
 Standalone: it talks to your ComfyUI directly (MoGe 2 for depth, SAM 3 for masks). It does
 not need DBS_ComfyBridge.
 
