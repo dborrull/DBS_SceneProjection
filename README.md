@@ -11,6 +11,8 @@ classic one. Optionally a Gaussian splat of the plate (Apple SHARP) in the same 
 
 ![One frame of a street plaza (left) and the setup it builds in Nuke's 3D viewer: camera, floor, walls and fitted shapes with the frame projected on them (right)](docs/images/example_street.jpg)
 
+![A street corner (left) and its setup in Nuke's 3D viewer with the urban label preset: walls as planes, floor and the shot camera (right)](docs/images/example_alley.jpg)
+
 Standalone: it talks to your ComfyUI directly (MoGe 2 for depth, SAM 3 for masks). It does
 not need DBS_ComfyBridge.
 
