@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0 (2026-11-24)
 
 - Renamed AutoProjection -> DBS_SceneProjection (node, menu, README, banner). Python modules,
   the `geoproj` tab and the `GeoProj_v###` Groups keep their names: old scripts still work.
