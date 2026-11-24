@@ -73,6 +73,10 @@ TIPS = {
                 "text:object:shape). boxes: a box each. cards: a camera-facing card each. relief: "
                 "MoGe's own surface as meshes (heavy). Floor / walls / ceiling / backdrop are "
                 "planes in all of them.",
+    "card_margin": "Pixels of the plate each card grows past its object (0 = cut to the "
+                   "object, as before). Room to paint or add things past the outline: the "
+                   "paint's own alpha cuts it. Inside that band a card can stand in front of "
+                   "farther things, which then slide with the camera.",
     "precision": "Sample spacing in pixels used to fit (and the relief mesh's vertex spacing). "
                  "Smaller = more detail and heavier; 4 is a good default, 2-3 for relief.",
     "system": "Which Nuke 3D system the projection setup is built with. USD: GeoImport, "
@@ -142,6 +146,7 @@ Group {
  addUserKnob {4 geometry l geometry M {%(geometries)s}%(geometry_t)s}
  addUserKnob {3 precision l "precision (px)" -STARTLINE%(precision_t)s}
  precision 4
+ addUserKnob {3 card_margin l "card margin (px)" -STARTLINE%(card_margin_t)s}
  addUserKnob {4 system l "3D system" M {%(systems)s}%(system_t)s}
  addUserKnob {6 splat l "Gaussian splat (SHARP)" +STARTLINE%(splat_t)s}
  addUserKnob {26 div_out l output}

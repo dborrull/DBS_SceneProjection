@@ -513,9 +513,11 @@ def add_frame(node):
 
 
 def _geometry(node):
-    """(geometry, step) from the node; nodes made before 0.5 have a detail level instead."""
+    """(geometry, step, card margin px) from the node; nodes made before 0.5 have a detail
+    level instead, and before the card margin knob none (0)."""
     if "geometry" in node.knobs():
-        return node["geometry"].value(), int(node["precision"].value()) or None
+        margin = float(node["card_margin"].value()) if "card_margin" in node.knobs() else 0.0
+        return node["geometry"].value(), int(node["precision"].value()) or None, margin
     return {"low": ("boxes", 6), "medium": ("boxes", 4), "high": ("relief", 3)}[node["detail"].value()]
 
 
@@ -817,7 +819,12 @@ def extract(group):
     pattern = group["show_pattern"].value().strip()
     chosen = select_prims(prims, group["show_only"].value(), pattern)
     if not chosen:
-        nuke.message("DBS_SceneProjection: pick an object or group in 'show only' (or type a 'pattern') first.")
+        if pattern:
+            nuke.message("DBS_SceneProjection: pattern '%s' matches nothing in this setup.\n\nNames are "
+                         "like wall_*, house_2 or structure (see 'show only')." % pattern)
+        else:
+            nuke.message("DBS_SceneProjection: pick an object or group in 'show only', or type a 'pattern' "
+                         "(e.g. wall_*) and press Enter, first.")
         return
     if not pattern:
         pattern = "/" + group["show_only"].value()
@@ -834,7 +841,7 @@ def extract(group):
         n = nuke.tcl("full_name [input %s %d]" % (full, i))
         return None if n in ("", "0") else "root." + n
 
-    title = "geoproject %s frame %03d" % (tag, setup["ref"])
+    title = "paint %s frame %03d" % (tag, setup["ref"])
     text, offsets = extract_template(p, setup, chosen, title, scale=group["scene_scale"].value(),
                                      plate=source(0), cam=source(1) if setup["use_shot_cam"] else None)
     n = int(group["gp_extracts"].value()) if "gp_extracts" in group.knobs() else 0

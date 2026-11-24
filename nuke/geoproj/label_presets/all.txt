@@ -91,7 +91,7 @@ plaza:floor
 building facade:wall
 shop front:wall
 garage door:wall
-building:object
+building:wall
 bus:object
 kiosk:object
 bus stop:object

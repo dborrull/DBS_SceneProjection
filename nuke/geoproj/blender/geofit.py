@@ -166,6 +166,7 @@ def extract_planes(pts, nrm, valid, rng):
     return labels, planes
 
 
+
 # ---- world frame ----------------------------------------------------------------------
 
 FLOOR_PITCH_DEG = 70.0   # second pass: a camera looking down this much (a desk shot from above)
@@ -239,9 +240,10 @@ def min_area_rect(xy):
     return best[1], best[2], best[3]
 
 
-def plane_quad(name, kind, n_world, pw, margin=PLANE_MARGIN):
+def plane_quad(name, kind, n_world, pw, margin=PLANE_MARGIN, grow=0.0):
     """Quad covering the points pw (world) of a plane with normal n_world, grown by `margin`
-    of its size on every side: in a room the extra floor / wall ends up behind other walls."""
+    of its size on every side: in a room the extra floor / wall ends up behind other walls.
+    grow: and by this much more (world units) on every side (the card margin)."""
     if kind in ("floor", "ceiling"):
         u, v = np.array([1.0, 0, 0]), np.array([0, 1.0, 0])
     else:
@@ -251,7 +253,7 @@ def plane_quad(name, kind, n_world, pw, margin=PLANE_MARGIN):
     a, b = pw @ u, pw @ v
     lo_a, hi_a = a.min(), a.max()
     lo_b, hi_b = b.min(), b.max()
-    ga, gb = margin * (hi_a - lo_a), margin * (hi_b - lo_b)
+    ga, gb = margin * (hi_a - lo_a) + grow, margin * (hi_b - lo_b) + grow
     lo_a, hi_a, lo_b, hi_b = lo_a - ga, hi_a + ga, lo_b - gb, hi_b + gb
     if kind in ("wall", "card"):
         lo_b = 0.0                       # walls and cards stand on the floor
@@ -454,6 +456,8 @@ MIN_SEG_SAMPLES = 30     # fewest samples of a floor / ceiling / backdrop to fit
 MIN_OBJ_SAMPLES = 15     # fewest samples of an object instance to make a box
 MIN_OBJ_SCORE = 0.40     # less confident object masks are left unlabelled (stray detections)
 IN_BACKDROP = 0.5        # object masks mostly inside a backdrop mask (a "house" in the trees) too
+SAME_OBJ_SIZE = 0.5      # overlapping object masks are one object only if the smaller is this
+                         # share of the larger (else it is a part: a stone in a wall)
 FLOAT_GAP = 0.15         # an object whose bottom is above this fraction of its top floats
 GROUND_TOL = 3.0         # ground inlier distance in DIST_TOL: grass and terrain are bumpy
 GROUND_ANGLE_DEG = 30.0
@@ -498,8 +502,15 @@ def load_roles(seg_path, roles, shape, step):
             if b in drop:
                 continue
             inter = np.logical_and(masks[a], masks[b]).sum()
-            small = min(masks[a].sum(), masks[b].sum())
+            small, large = sorted((masks[a].sum(), masks[b].sum()))
             if inter > 0.5 * np.logical_or(masks[a], masks[b]).sum() or inter > 0.8 * small:
+                # One object answering two prompts: keep the more confident mask. But a much
+                # smaller mask never removes a larger one it sits in: more confident stones in a
+                # wall left no wall at all. Both stay, the smaller wins its pixels. (A less
+                # confident part, a wheel of a truck, still goes.)
+                part = inter > 0.8 * small and small <= SAME_OBJ_SIZE * large
+                if part and masks[b].sum() > masks[a].sum():
+                    continue
                 drop.add(b)
     role = np.zeros(shape, np.int8)
     inst = np.full(shape, -1)        # object and backdrop instances (mask index)
@@ -613,14 +624,15 @@ def backdrop_quad(pw_bd, cam, R, info, min_dist=0.0, pct=50):
     return plane_quad("backdrop", "backdrop", np.array([0, -1.0, 0]), pts)
 
 
-def card_quad(name, p, cam_xy):
+def card_quad(name, p, cam_xy, margin_rad=0.0):
     """Vertical card for one backdrop instance (a tree, a hill): faces the camera from the
-    instance's horizontal direction, at its own depth, standing on the ground."""
+    instance's horizontal direction, at its own depth, standing on the ground.
+    margin_rad: the card margin as an angle (pixels / focal in pixels), grown at its depth."""
     d = np.median(p[:, :2], 0) - cam_xy
     if np.linalg.norm(d) < 1e-6:
         return None
     n = np.array([-d[0], -d[1], 0.0]) / np.linalg.norm(d)
-    q = plane_quad(name, "card", n, p, margin=0.05)
+    q = plane_quad(name, "card", n, p, margin=0.05, grow=margin_rad * float(np.linalg.norm(d)))
     return q
 
 
@@ -636,7 +648,7 @@ def _dilate(m, n):
     return out
 
 
-def card_cutout(card, mask, rays_w, cam_w, z=None, valid=None):
+def card_cutout(card, mask, rays_w, cam_w, z=None, valid=None, margin=0):
     """A backdrop card cut to its instance's shape: the card's plane, but only where the
     (slightly grown) mask is, plus straight down to the floor under it (what nearer things hide
     of the trunk). A rectangle would stand in front of everything farther inside it: the trees
@@ -644,16 +656,22 @@ def card_cutout(card, mask, rays_w, cam_w, z=None, valid=None):
     "faces" (a grid mesh on the plane, facing the camera) and "cut" (the samples it covers, for
     the verification); the card keeps its plane (center, normal, size) for the rest.
     z / valid (MoGe depth of the grid): the growth and the fill never cover samples farther than
-    the card (another tree behind it)."""
+    the card (another tree behind it).
+    margin (samples, the 'card margin' knob): a band this wide around that, which may cover
+    what is behind: room to paint past the outline, cut by the paint's own alpha (a compositor
+    projects onto a card larger than the object). Only on request: it brings back cards
+    standing in front of farther things inside the band."""
     n, c = np.array(card["normal"]), np.array(card["center"])
     with np.errstate(divide="ignore", invalid="ignore"):
         t = ((c - cam_w) @ n) / (rays_w @ n)
     P = cam_w + t[..., None] * rays_w
     region = _dilate(mask, CUT_DILATE)
     region = np.maximum.accumulate(region, axis=0)       # and everything below it in the image
-    ok = region & np.isfinite(t) & (t > 0) & (P[..., 2] >= 0)
     if z is not None:
-        ok &= mask | ~(valid & (z > t * (1 + SIL_DEPTH_TOL)))
+        region &= mask | ~(valid & (z > t * (1 + SIL_DEPTH_TOL)))
+    if margin > 0:
+        region = _dilate(region, int(margin))
+    ok = region & np.isfinite(t) & (t > 0) & (P[..., 2] >= 0)
     cell = ok[:-1, :-1] & ok[1:, :-1] & ok[:-1, 1:] & ok[1:, 1:]
     i, j = np.nonzero(cell)
     if len(i) * 2 < MIN_MESH_FACES:
@@ -793,12 +811,12 @@ def cap_box_depth(box, u, limit):
     return box
 
 
-def make_object(name, label, p, bottom, cam_xy, mode):
+def make_object(name, label, p, bottom, cam_xy, mode, margin_rad=0.0):
     """One object as the requested shape ('card', 'box', a round shape) or, with 'auto', the
     shape whose surface stays closest to the points (weighted by shapes.COMPLEXITY)."""
     u, width, height = _seen_size(p, cam_xy)
     depth_max = DEPTH_MAX_RATIO * max(width, height)
-    card = card_quad(name, p, cam_xy)
+    card = card_quad(name, p, cam_xy, margin_rad)
     box = cap_box_depth(box_from_points(name, p, cam_xy, bottom), u, depth_max)
     cands = {"box": (box, shapes.box_residual(box, p))}
     boxp = box_from_planes(name, p, cam_xy, bottom)
@@ -857,6 +875,8 @@ def mesh_object(name, label, p, bottom, cam_xy, gen, mask, pts, valid, info, ste
 
 def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rng, geom, gen_meshes=None):
     role, inst, inst_label, inst_shape = load_roles(seg_path, roles, valid.shape, step)
+    # card margin knob (px of the plate) as an angle: a card grows by it at its own depth
+    margin_rad = geom.get("card_margin", 0.0) / (info["intrinsics_normalized"]["fx"] * info["width"])
     floor = valid & (role == ROLE_CODES["floor"])
     ground = fit_ground(pts, nrm, floor, rng) if floor.sum() >= MIN_SEG_SAMPLES else None
     floor_source = "labels"
@@ -921,11 +941,12 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
                     continue
                 p = pw[m][robust_inliers(pts[m][:, 2])]
                 n_cards += 1
-                card = card_quad("card_%d" % n_cards, p, cam_w[:2])
+                card = card_quad("card_%d" % n_cards, p, cam_w[:2], margin_rad)
                 if card is not None:
                     card["label"] = inst_label[i]
                     card["bd_inst"] = int(i)        # relief: pushed behind this instance's mesh
-                    prims.append(card_cutout(card, m, rays_g, cam_w, pts[..., 2], valid))
+                    prims.append(card_cutout(card, m, rays_g, cam_w, pts[..., 2], valid,
+                                             margin=int(round(geom.get("card_margin", 0) / step))))
             bd = backdrop_quad(pw[backdrop], cam_w, R, info, behind, pct=95)
             rel = np.isin(inst, [i for i, g in relief_inst if g == "backdrop"]) & backdrop
             if bd is not None and rel.any():
@@ -990,7 +1011,8 @@ def fit_semantic(pts, nrm, valid, info, seg_path, roles, step, camera_height, rn
                                    (gen_meshes or {}).get(int(it["i"])), inst == it["i"], pts, valid, info,
                                    step, to_world)
             else:
-                prim = make_object("%s_%d" % (name, counts[name]), label, it["p"], it["bottom"], cam_xy, mode)
+                prim = make_object("%s_%d" % (name, counts[name]), label, it["p"], it["bottom"], cam_xy, mode,
+                                   margin_rad)
             prim["support"] = it.get("support", "floor")
             prim["inst"] = int(it["i"])       # its SAM3 instance: the silhouette check
             prims.append(prim)
@@ -1111,16 +1133,17 @@ def mesh_mode(prims, pts, valid, scale, ctx=None, pw=None):
 # ---- main -----------------------------------------------------------------------------
 
 def fit(npz_path, json_path, camera_height=None, step=None, seed=0, seg_path=None, roles=None,
-        geometry="shapes", principal=None, detail=None, gen_meshes=None):
+        geometry="shapes", principal=None, detail=None, gen_meshes=None, card_margin=0.0):
     """seg_path + roles ({label: role or role:shape}): planes and objects follow the labels.
     Without them, floor / walls / objects are guessed from geometry alone.
     gen_meshes: {SAM3 instance: (vertices, faces)} generated for 'mesh' labels (meshgen.py).
     geometry: cards | boxes | shapes | relief (see GEOMETRY); step: sample spacing in px.
-    detail (low | medium | high): pre-0.5 levels, mapped to a geometry + step."""
+    detail (low | medium | high): pre-0.5 levels, mapped to a geometry + step.
+    card_margin: px of the plate that cards grow past their object (see card_cutout)."""
     if detail:
         geometry, legacy_step = LEGACY_DETAIL[detail]
         step = step or legacy_step
-    det = GEOMETRY[geometry]
+    det = dict(GEOMETRY[geometry], card_margin=max(float(card_margin or 0), 0.0))
     step = step or DEFAULT_STEP
     pts, nrm, valid, info = load(npz_path, json_path, step, principal)
     rng = np.random.default_rng(seed)

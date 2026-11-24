@@ -69,6 +69,8 @@ def run_blender(blender, npz, json_path, out_dir, camera_height=0.0, seg=None, r
                 splat=None, track_points=None, meshes=None):
     cmd = [blender, "-b", "--factory-startup", "--python", BUILD_SCENE, "--", npz, json_path, out_dir,
            "--geometry", geometry[0]] + (["--step", str(geometry[1])] if geometry[1] else [])
+    if len(geometry) > 2 and geometry[2]:
+        cmd += ["--card-margin", "%g" % geometry[2]]       # (geometry, step, card margin px)
     if splat:
         cmd += ["--splat", splat]
     if meshes:

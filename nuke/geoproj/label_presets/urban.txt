@@ -12,7 +12,7 @@ building facade:wall
 wall:wall
 shop front:wall
 garage door:wall
-building:object
+building:wall
 car:object
 van:object
 truck:object

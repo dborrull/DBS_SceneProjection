@@ -133,6 +133,7 @@ class SaveDA3Geometry:
 
 
 _SAM3_NODE = None  # one comfyui-rmbg SAM3Segment instance: its model cache lives on it
+RMBG_TESTED = "3.1.0"  # comfyui-rmbg version SegmentLabels was last checked against
 
 
 class SegmentLabels:
@@ -170,7 +171,18 @@ class SegmentLabels:
             if cls is None:
                 raise RuntimeError("SegmentLabels needs comfyui-rmbg (SAM3Segment) installed.")
             _SAM3_NODE = cls()
+        # _load_processor and the processor's methods are comfyui-rmbg internals, not its API:
+        # an update can rename them. Say so plainly instead of an AttributeError.
+        changed = ("SegmentLabels: comfyui-rmbg has changed and its SAM3 can no longer be used "
+                   "(%s). Tested with comfyui-rmbg " + RMBG_TESTED + ": go back to that version, "
+                   "or update DBS_SceneProjection.")
+        if not hasattr(_SAM3_NODE, "_load_processor"):
+            raise RuntimeError(changed % "no SAM3Segment._load_processor")
         processor, device = _SAM3_NODE._load_processor("Auto")
+        api = [a for a in ("set_image", "reset_all_prompts", "set_confidence_threshold", "set_text_prompt")
+               if not hasattr(processor, a)]
+        if api or not hasattr(processor, "model"):
+            raise RuntimeError(changed % ("the SAM3 processor has no " + ", ".join(api or ["model"])))
         # SAM3 (~3.4 GB) is outside ComfyUI's model management: make room for it, and park it on
         # the CPU when done (below) so MoGe / SHARP after it get the VRAM back on an 8 GB card.
         import comfy.model_management as mm

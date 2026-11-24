@@ -60,6 +60,25 @@
   long, two cars 0.1 m and below 0 m tall -> boxes of their size; depth error 11.6% -> 4.8%.
   Interior: the sculpture is a 0.2 m box (was a 1.8 m revolve); truck shot unchanged.
 
+- **card margin (px)** knob beside precision: cards grow that many plate pixels past their
+  object (backdrop cutouts, and object cards in `cards`), so paint or added things past the
+  outline are not cut at the card's edge. 0 (default) keeps the cards cut to the object; at 0
+  the fit is identical to before (park, truck, interior). Park shot at 40 px: backdrop cards
+  cover 3.3x the samples, a bench card at 7 m grows ~0.2 m a side.
+- Segmentation says plainly when a comfyui-rmbg update no longer fits (it uses rmbg's SAM3
+  internals), with the version it was tested with (3.1.0, also in the README).
+- "extract for paint" backdrops are titled `paint house_2 frame 1060` (was `geoproject ...`,
+  the old name).
+- A small object mask no longer removes a larger one it sits in. Overlapping object masks keep
+  the more confident one (one object answering two prompts), so more confident stones (`rock`)
+  in a wall labelled `house` left no wall at all: 28% of the frame without geometry. Now both
+  stay and the stones win their pixels; a less confident part (a truck's wheel) still goes.
+  Street shot: empty 28% -> 4%, depth error 1.8% -> 1.6%; park 4.8% -> 3.5% (a building and
+  a bus stop back), living room 0.67% -> 0.58% (a cabinet back); truck shot unchanged.
+- Presets urban and all: `building` is a wall (was an object). As an object a building got one
+  card facing the camera; facades along a street are seen edge-on. Street shot, same masks:
+  depth error 5.2% -> 2.2% median, 53% -> 7.8% at p90, facades on their own planes.
+
 ## 0.8.1
 
 - Boxes give each face its own vertices, and round shapes their caps: with shared corners Nuke

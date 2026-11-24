@@ -55,6 +55,8 @@ wrong on real interiors: it took a dining table for the floor).
   (`moge_2_vitl_normal_fp16.safetensors`) and `comfy_nodes/nuke_geo_projection` in
   `custom_nodes` (copy or link the folder). For segmentation, [ComfyUI-RMBG](https://github.com/1038lab/ComfyUI-RMBG) (its SAM3, `models/sam3/sam3.pt`).
   The first build with segmentation downloads `sam3.pt` (about 3.4 GB), so it takes longer once.
+  Tested with ComfyUI-RMBG 3.1.0: the gizmo uses its SAM3 directly, so if a later version
+  breaks segmentation, the error says so; go back to 3.1.0 until the gizmo is updated.
   Restart ComfyUI. First run after a restart loads SAM3 (~15 s); then a plate takes ~15 s in all.
 - **Gaussian splat** (optional): [ComfyUI-Sharp](https://github.com/PozzettiAndrea/ComfyUI-Sharp)
   in `custom_nodes` (its SHARP weights download to `models/sharp` on first use). Needs Nuke 17.1+
@@ -174,6 +176,11 @@ wrong on real interiors: it took a dining table for the floor).
    would stand in front of whatever is farther inside it, e.g. the trees behind a `forest`
    card. In relief the cards sit just behind each tree's mesh as fill, so its holes show the
    tree's own distance, not the far backdrop.
+   **card margin (px)**: how far each card grows past its object, in pixels of the plate
+   (0 by default: cut to the object as above). For painting or adding things past the
+   outline, as on a card larger than the object, cut by the paint's own alpha. Inside that
+   band a card can stand in front of farther things, which then slide with the camera. It
+   applies to backdrop cards and, in `cards`, to the object cards.
    **precision (px)**: sample spacing of the fit (and the relief's vertex spacing); 4 by
    default, 2–3 for more detail. Nodes made before 0.5 keep their old detail level (low =
    boxes at 6 px, medium = boxes at 4 px, high = relief at 3 px).
@@ -208,7 +215,7 @@ wrong on real interiors: it took a dining table for the floor).
      at any depth: `lamp_1`, `*chair*`, `vase* sofa_1`, `/structure/floor`.
    - **extract for paint** (USD and classic): pick an object or group in **show only** (or a
      **pattern**) and press it. To the right of the Group it pastes loose nodes in a backdrop
-     titled `geoproject lamp_1 frame 001`, named after the object (`lamp_1_…`):
+     titled `paint lamp_1 frame 001`, named after the object (`lamp_1_…`):
      ```
      plate -> lamp_1_Hold (FrameHold) -> lamp_1_Paint (RotoPaint, "paint here", rgb)
            -> lamp_1_Project <- lamp_1_CamHold (FrameHold) <- camera

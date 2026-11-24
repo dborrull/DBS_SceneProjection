@@ -208,6 +208,7 @@ def main():
     ap.add_argument("--track-points", default=None,
                     help="JSON [(u, v, depth)] of tracker points at the reference frame -> track scale")
     ap.add_argument("--meshes", default=None, help="folder of inst_<i>.glb generated for 'mesh' labels")
+    ap.add_argument("--card-margin", type=float, default=0.0, help="px cards grow past their object")
     a = ap.parse_args(argv)
     os.makedirs(a.out_dir, exist_ok=True)
 
@@ -227,7 +228,8 @@ def main():
                     "%.2f%%" % (100 * e["after"]) if "after" in e else e.get("skipped", "kept")))
     gen = load_generated(a.meshes) if a.meshes else None
     result, proxy = geofit.fit(a.npz, a.json, a.camera_height, a.step, seg_path=a.seg, roles=roles,
-                               geometry=a.geometry, principal=a.principal, detail=a.detail, gen_meshes=gen)
+                               geometry=a.geometry, principal=a.principal, detail=a.detail, gen_meshes=gen,
+                               card_margin=a.card_margin)
     for p in result["primitives"]:
         if "mesh_fit" in p or "mesh_fallback" in p:
             print("GEOFIT mesh %s: %s %s" % (p["name"], p.get("mesh_fallback") and "fallback to %s (%s)"
